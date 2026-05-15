@@ -1180,7 +1180,7 @@ export default function App() {
                         : 'bg-purple-100 text-purple-700'
                     }`}>
                       <span>{currentUser.role === 'farmer' ? '🌾' : '🎨'}</span>
-                      <span>{currentUser.role === 'farmer' ? 'Agriculture' : 'Craft'}</span>
+                      <span>{currentUser.role === 'farmer' ? 'Farmers' : 'Artisans'}</span>
                       <span className="ml-auto text-[10px] opacity-50 font-bold">LOCKED</span>
                     </div>
                   </div>
