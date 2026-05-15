@@ -435,7 +435,7 @@ export default function App() {
       price,
       stock,
       sold: 0,
-      category: formData.get('category') as 'agriculture' | 'craft',
+      category: currentUser.role === 'farmer' ? 'agriculture' : 'craft',
       producer: currentUser?.fullName,
       producerId: currentUser?.id,
       image: "https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400",
@@ -660,7 +660,12 @@ export default function App() {
                     <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-50 text-center">
                       <div className="w-24 h-24 bg-primary/10 rounded-full mx-auto mb-4 flex items-center justify-center"><span className="text-3xl font-black text-primary">{currentUser.fullName[0]}</span></div>
                       <h3 className="text-xl font-black text-gray-800">{currentUser.fullName}</h3>
-                      <p className="text-sm text-gray-500 uppercase tracking-widest font-bold mt-1">{currentUser.role}</p>
+                      <p className={`text-xs font-black uppercase tracking-widest mt-2 px-4 py-1 rounded-full inline-block ${
+                        currentUser.role === 'farmer' ? 'bg-green-100 text-green-700' :
+                        currentUser.role === 'artisan' ? 'bg-purple-100 text-purple-700' :
+                        currentUser.role === 'buyer' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-500'
+                      }`}>{currentUser.role}</p>
                       <div className="mt-6 pt-6 border-t border-gray-50 space-y-3 text-left">
                         <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin size={16} /> {currentUser.location}</p>
                         <p className="text-xs text-gray-400 text-center">Joined {currentUser.joinedDate}</p>
@@ -671,24 +676,46 @@ export default function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                       {(currentUser.role === 'farmer' || currentUser.role === 'artisan') ? (
                         <>
-                          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-50">
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Total Sales</p>
-                            <p className="text-3xl font-black text-primary">₱{products.reduce((acc, p) => acc + (p.sold * p.price), 0).toLocaleString()}</p>
+                          <div className={`p-6 rounded-3xl shadow-sm border ${
+                            currentUser.role === 'farmer' ? 'bg-green-50 border-green-100' : 'bg-purple-50 border-purple-100'
+                          }`}>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                              {currentUser.role === 'farmer' ? 'Harvest Revenue' : 'Craft Revenue'}
+                            </p>
+                            <p className={`text-3xl font-black ${
+                              currentUser.role === 'farmer' ? 'text-green-700' : 'text-purple-700'
+                            }`}>₱{products.filter(p => p.producerId === currentUser?.id).reduce((acc, p) => acc + (p.sold * p.price), 0).toLocaleString()}</p>
                           </div>
-                          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-50">
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Items Sold</p>
-                            <p className="text-3xl font-black text-primary">{products.reduce((acc, p) => acc + p.sold, 0)}</p>
+                          <div className={`p-6 rounded-3xl shadow-sm border ${
+                            currentUser.role === 'farmer' ? 'bg-green-50 border-green-100' : 'bg-purple-50 border-purple-100'
+                          }`}>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                              {currentUser.role === 'farmer' ? 'Units Harvested' : 'Pieces Crafted'}
+                            </p>
+                            <p className={`text-3xl font-black ${
+                              currentUser.role === 'farmer' ? 'text-green-700' : 'text-purple-700'
+                            }`}>{products.filter(p => p.producerId === currentUser?.id).reduce((acc, p) => acc + p.sold, 0)}</p>
                           </div>
-                          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-50">
-                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">Active Listings</p>
-                            <p className="text-3xl font-black text-primary">{products.filter(p => p.producerId === currentUser?.id).length}</p>
+                          <div className={`p-6 rounded-3xl shadow-sm border ${
+                            currentUser.role === 'farmer' ? 'bg-green-50 border-green-100' : 'bg-purple-50 border-purple-100'
+                          }`}>
+                            <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                              {currentUser.role === 'farmer' ? 'Active Harvests' : 'Active Creations'}
+                            </p>
+                            <p className={`text-3xl font-black ${
+                              currentUser.role === 'farmer' ? 'text-green-700' : 'text-purple-700'
+                            }`}>{products.filter(p => p.producerId === currentUser?.id).length}</p>
                           </div>
                           <button 
                             onClick={() => setIsAddProductFormOpen(true)}
-                            className="bg-primary text-white p-6 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+                            className={`text-white p-6 rounded-3xl shadow-lg flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-transform ${
+                              currentUser.role === 'farmer' ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'
+                            }`}
                           >
                             <PlusCircle size={32} />
-                            <span className="font-black uppercase tracking-widest text-xs">Add New Product</span>
+                            <span className="font-black uppercase tracking-widest text-xs">
+                              {currentUser.role === 'farmer' ? 'List a Harvest' : 'Showcase a Creation'}
+                            </span>
                           </button>
                         </>
                       ) : (
@@ -1109,13 +1136,27 @@ export default function App() {
       
       {/* Add Product Modal */}
       <AnimatePresence>
-        {isAddProductFormOpen && (
+        {isAddProductFormOpen && currentUser && (
           <div className="fixed inset-0 z-[250] flex items-center justify-center p-4" onClick={() => setIsAddProductFormOpen(false)}>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative p-8 max-h-[90vh] overflow-y-auto">
-              <h2 className="text-3xl font-black text-primary mb-2 text-center">List New Product</h2>
-              <p className="text-center text-gray-500 mb-8 font-medium italic">Grow your business, Mindoro style.</p>
-              
+              {/* Role-tailored modal header */}
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+                currentUser.role === 'farmer' ? 'bg-green-100' : 'bg-purple-100'
+              }`}>
+                <span className="text-2xl">{currentUser.role === 'farmer' ? '🌾' : '🎨'}</span>
+              </div>
+              <h2 className={`text-3xl font-black mb-2 text-center ${
+                currentUser.role === 'farmer' ? 'text-green-700' : 'text-purple-700'
+              }`}>
+                {currentUser.role === 'farmer' ? 'List a Harvest' : 'Showcase a Creation'}
+              </h2>
+              <p className="text-center text-gray-500 mb-8 font-medium italic">
+                {currentUser.role === 'farmer'
+                  ? 'Share your fresh produce with Mindoro.'
+                  : 'Let your handcrafted work shine.'}
+              </p>
+
               <form onSubmit={handleAddProduct} className="space-y-4" noValidate>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
@@ -1124,18 +1165,24 @@ export default function App() {
                       name="name"
                       required
                       maxLength={80}
-                      placeholder="e.g. Organic Calamansi"
+                      placeholder={currentUser.role === 'farmer' ? 'e.g. Organic Calamansi' : 'e.g. Woven Basket'}
                       onChange={() => setProductErrors(p => ({ ...p, name: '' }))}
                       className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${productErrors.name ? 'border-red-300 bg-red-50' : 'border-transparent focus:border-primary'}`}
                     />
                     {productErrors.name && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.name}</p>}
                   </div>
+                  {/* Locked category badge — derived from role, not user input */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Category</label>
-                    <select name="category" required className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary rounded-2xl outline-none font-bold text-gray-700">
-                      <option value="agriculture">Agriculture</option>
-                      <option value="craft">Craft</option>
-                    </select>
+                    <div className={`w-full px-4 py-3 rounded-2xl font-black text-sm flex items-center gap-2 ${
+                      currentUser.role === 'farmer'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      <span>{currentUser.role === 'farmer' ? '🌾' : '🎨'}</span>
+                      <span>{currentUser.role === 'farmer' ? 'Agriculture' : 'Craft'}</span>
+                      <span className="ml-auto text-[10px] opacity-50 font-bold">LOCKED</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1156,7 +1203,9 @@ export default function App() {
                     {productErrors.price && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.price}</p>}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Stock</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">
+                      {currentUser.role === 'farmer' ? 'Stock (kg / units)' : 'Stock (pieces)'}
+                    </label>
                     <input
                       name="stock"
                       type="number"
@@ -1181,7 +1230,9 @@ export default function App() {
                     name="description"
                     rows={3}
                     maxLength={500}
-                    placeholder="Describe your product..."
+                    placeholder={currentUser.role === 'farmer'
+                      ? 'Describe your harvest — variety, freshness, farming method...'
+                      : 'Describe your craft — materials, technique, inspiration...'}
                     onChange={(e) => {
                       const counter = document.getElementById('desc-counter');
                       if (counter) counter.textContent = `${e.target.value.length}/500`;
@@ -1193,8 +1244,10 @@ export default function App() {
                   {productErrors.description && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.description}</p>}
                 </div>
 
-                <button type="submit" className="w-full py-4 bg-primary text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform mt-4">
-                  List Product Now
+                <button type="submit" className={`w-full py-4 text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform mt-4 ${
+                  currentUser.role === 'farmer' ? 'bg-green-600 hover:bg-green-700' : 'bg-purple-600 hover:bg-purple-700'
+                }`}>
+                  {currentUser.role === 'farmer' ? 'List Harvest Now' : 'Showcase Creation Now'}
                 </button>
               </form>
             </motion.div>
