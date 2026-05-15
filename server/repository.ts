@@ -371,24 +371,25 @@ export function createRepository(mongoUri: string | undefined, dbFilePath: strin
 
   return {
     get repo() {
-      // Dynamically route to the connected adapter
-      if (mongoose.connection.readyState === 1) return mongoRepo;
-      return jsonRepo;
+      return activeRepo;
     },
     connectMongo: async () => {
       if (!mongoUri) {
         console.warn('MONGODB_URI not found. Using JSON file storage.');
+        activeRepo = jsonRepo;
         await jsonRepo.initialize();
         return false;
       }
       try {
         await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
         console.log('Connected to MongoDB');
+        activeRepo = mongoRepo;
         await mongoRepo.initialize();
         return true;
       } catch (err) {
         console.error('MongoDB connection error:', err);
         console.log('Falling back to JSON file storage.');
+        activeRepo = jsonRepo;
         await jsonRepo.initialize();
         return false;
       }
