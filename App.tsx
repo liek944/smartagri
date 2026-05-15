@@ -285,17 +285,33 @@ export default function App() {
     const price = Number(fd.get('price'));
     const stock = Number(fd.get('stock'));
     const description = (fd.get('description') as string).trim();
+    const imageFile = fd.get('image') as File | null;
 
     const errs = validateProduct({ name, price, stock, description });
     if (Object.keys(errs).length > 0) { setProductErrors(errs); return; }
     setProductErrors({});
+
+    let image = 'https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400';
+    if (imageFile && imageFile.size > 0) {
+      const getBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+      try {
+        image = await getBase64(imageFile);
+      } catch (err) {
+        console.error("Image read error", err);
+      }
+    }
 
     try {
       await api.products.create({
         name, price, stock, sold: 0,
         category: currentUser.role === 'farmer' ? 'agriculture' : 'craft',
         producer: currentUser.fullName, producerId: currentUser.id,
-        image: 'https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400',
+        image,
         description,
       });
       setIsAddProductFormOpen(false);
