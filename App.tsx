@@ -58,6 +58,11 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [authError, setAuthError] = useState('');
 
+  // Validation error states
+  const [phoneError, setPhoneError] = useState('');
+  const [deliveryError, setDeliveryError] = useState('');
+  const [productErrors, setProductErrors] = useState<Record<string, string>>({});
+
   // Auth Effect
   useEffect(() => {
     const savedUser = localStorage.getItem('sac_user');
@@ -194,18 +199,54 @@ export default function App() {
     }));
   };
 
+  // Phone number change handler — digits only, max 11
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+    setPhoneNumber(raw);
+    if (raw.length === 0) {
+      setPhoneError('Phone number is required.');
+    } else if (raw.length < 11) {
+      setPhoneError(`${11 - raw.length} more digit${11 - raw.length > 1 ? 's' : ''} needed.`);
+    } else if (!/^(09|\+639)/.test(raw)) {
+      setPhoneError('Must start with 09 (e.g. 09171234567).');
+    } else {
+      setPhoneError('');
+    }
+  };
+
+  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.slice(0, 100);
+    setDeliveryLocation(val);
+    if (val.trim().length === 0) {
+      setDeliveryError('Barangay is required.');
+    } else if (val.trim().length < 3) {
+      setDeliveryError('Please enter a valid barangay name.');
+    } else {
+      setDeliveryError('');
+    }
+  };
+
   const handleCheckout = async () => {
     if (!currentUser) return;
 
-    if (!deliveryLocation || deliveryLocation.trim() === '') {
-      alert('Please enter your delivery barangay in Roxas first.');
-      return;
+    // Run all validations before submitting
+    let hasError = false;
+
+    if (!deliveryLocation || deliveryLocation.trim().length < 3) {
+      setDeliveryError('Please enter a valid barangay name.');
+      hasError = true;
     }
 
-    if (!phoneNumber || phoneNumber.trim() === '') {
-      alert('Please enter your GCash or contact number.');
-      return;
+    const digits = phoneNumber.replace(/\D/g, '');
+    if (digits.length !== 11) {
+      setPhoneError('Phone number must be exactly 11 digits.');
+      hasError = true;
+    } else if (!/^09/.test(digits)) {
+      setPhoneError('Must start with 09 (e.g. 09171234567).');
+      hasError = true;
     }
+
+    if (hasError) return;
 
     const newOrder = {
       userId: currentUser?.id,
@@ -246,13 +287,30 @@ export default function App() {
     e.preventDefault();
     setAuthError('');
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
+    const email = (formData.get('email') as string).trim();
     const password = formData.get('password') as string;
-    const fullName = formData.get('fullName') as string;
+    const fullName = (formData.get('fullName') as string || '').trim();
+    const username = (formData.get('username') as string || '').trim();
     const role = formData.get('role') as string;
 
+    // Client-side validation
+    if (authMode === 'register') {
+      if (fullName.length < 2) { setAuthError('Full name must be at least 2 characters.'); return; }
+      if (fullName.length > 60) { setAuthError('Full name must be 60 characters or fewer.'); return; }
+      if (username.length < 3) { setAuthError('Username must be at least 3 characters.'); return; }
+      if (username.length > 30) { setAuthError('Username must be 30 characters or fewer.'); return; }
+      if (!/^[a-zA-Z0-9._-]+$/.test(username)) { setAuthError('Username can only contain letters, numbers, dots, hyphens, or underscores.'); return; }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) { setAuthError('Please enter a valid email address.'); return; }
+      if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return; }
+      if (password.length > 128) { setAuthError('Password must be 128 characters or fewer.'); return; }
+    } else {
+      if (email.length < 1) { setAuthError('Please enter your email or username.'); return; }
+      if (password.length < 1) { setAuthError('Please enter your password.'); return; }
+    }
+
     const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
-    const body = authMode === 'login' ? { email, password } : { email, username: formData.get('username'), password, fullName, role };
+    const body = authMode === 'login' ? { email, password } : { email, username, password, fullName, role };
 
     try {
       const res = await fetch(endpoint, {
@@ -349,16 +407,39 @@ export default function App() {
     if (!currentUser) return;
 
     const formData = new FormData(e.currentTarget);
+    const name = (formData.get('name') as string).trim();
+    const price = Number(formData.get('price'));
+    const stock = Number(formData.get('stock'));
+    const description = (formData.get('description') as string).trim();
+
+    // Validate
+    const errs: Record<string, string> = {};
+    if (name.length < 2) errs.name = 'Product name must be at least 2 characters.';
+    if (name.length > 80) errs.name = 'Product name must be 80 characters or fewer.';
+    if (!price || price <= 0) errs.price = 'Price must be greater than 0.';
+    if (price > 999999) errs.price = 'Price seems too high. Max is ₱999,999.';
+    if (!Number.isInteger(price) && String(price).split('.')[1]?.length > 2) errs.price = 'Max 2 decimal places.';
+    if (!stock || stock < 1) errs.stock = 'Stock must be at least 1.';
+    if (stock > 99999) errs.stock = 'Stock seems too high. Max is 99,999.';
+    if (!Number.isInteger(stock)) errs.stock = 'Stock must be a whole number.';
+    if (description.length > 500) errs.description = `Too long — ${description.length}/500 characters.`;
+
+    if (Object.keys(errs).length > 0) {
+      setProductErrors(errs);
+      return;
+    }
+    setProductErrors({});
+
     const productData: Omit<Product, 'id'> = {
-      name: formData.get('name') as string,
-      price: Number(formData.get('price')),
-      stock: Number(formData.get('stock')),
+      name,
+      price,
+      stock,
       sold: 0,
       category: formData.get('category') as 'agriculture' | 'craft',
       producer: currentUser?.fullName,
       producerId: currentUser?.id,
       image: "https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400",
-      description: formData.get('description') as string
+      description
     };
 
     try {
@@ -651,14 +732,14 @@ export default function App() {
             )}
 
             {activeSection === 'auth' && (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-[1000px] mx-auto py-12 flex flex-col md:flex-row items-center gap-12 lg:gap-24">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-[1000px] mx-auto py-8 flex flex-col md:flex-row items-center gap-8 lg:gap-16">
                 <div className="flex-1 text-center md:text-left">
                   <h2 className="text-6xl font-black text-primary mb-6 tracking-tighter">SmartAgriCraft</h2>
                   <p className="text-2xl font-medium text-gray-700 leading-tight">Connect with local farmers and artisans in Oriental Mindoro. Authentically local.</p>
                 </div>
                 
                 <div className="w-full max-w-[400px]">
-                  <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-100">
+                  <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-100 max-h-[75vh] overflow-y-auto">
                     <form onSubmit={handleAuthSubmit} className="space-y-4">
                       {authMode === 'register' && (
                         <>
@@ -716,9 +797,9 @@ export default function App() {
       {/* Cart Modal */}
       <AnimatePresence>
         {isCartModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCartModalOpen(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative overflow-hidden flex flex-col h-[80vh] md:h-auto md:max-h-[80vh]">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={() => setIsCartModalOpen(false)}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-xl rounded-3xl shadow-2xl relative overflow-hidden flex flex-col h-[80vh] md:h-auto md:max-h-[80vh]">
               <div className="p-6 border-b flex justify-between items-center bg-gray-50">
                 <h2 className="text-2xl font-black text-primary">Shopping Cart</h2>
                 <button onClick={() => setIsCartModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full"><X /></button>
@@ -776,13 +857,15 @@ export default function App() {
       {/* Checkout Modal */}
       <AnimatePresence>
         {isCheckoutModalOpen && (
-          <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsCheckoutModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative p-8">
+          <div className="fixed inset-0 z-[210] flex items-center justify-center p-4" onClick={() => setIsCheckoutModalOpen(false)}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative flex flex-col max-h-[90vh]">
+              <div className="p-8 pb-0">
               <h2 className="text-3xl font-black text-primary mb-2 text-center">Complete Your Order</h2>
-              <p className="text-center text-gray-500 mb-8 font-medium italic">Support local, stay digital.</p>
-              
-                <div className="space-y-6">
+              <p className="text-center text-gray-500 mb-4 font-medium italic">Support local, stay digital.</p>
+              </div>
+              <div className="overflow-y-auto flex-grow px-8">
+                <div className="space-y-6 pb-4">
                 <div className="bg-gray-50 p-6 rounded-3xl space-y-3">
                   <div className="flex justify-between text-sm text-gray-500 font-bold"><span>Items ({cartCount})</span><span>₱{cartSubtotal}</span></div>
                   <div className="flex justify-between text-sm text-gray-500 font-bold"><span>Delivery</span><span>₱50</span></div>
@@ -797,15 +880,21 @@ export default function App() {
                         type="text"
                         required
                         placeholder="e.g. Odiong"
-                        value={deliveryLocation} 
-                        onChange={(e) => setDeliveryLocation(e.target.value)}
-                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${!deliveryLocation ? 'border-orange-100' : 'border-transparent focus:border-primary'}`}
+                        value={deliveryLocation}
+                        maxLength={100}
+                        onChange={handleDeliveryChange}
+                        className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${
+                          deliveryError ? 'border-red-300 bg-red-50' : deliveryLocation.trim().length >= 3 ? 'border-green-300' : !deliveryLocation ? 'border-orange-100' : 'border-orange-200'
+                        }`}
                       />
-                      {deliveryLocation && (
-                        <div className="mt-2 ml-2 text-[10px] text-primary font-black uppercase tracking-tighter opacity-70">
-                          Full Address: {deliveryLocation}, Roxas, Or. Mindoro
-                        </div>
-                      )}
+                      {deliveryError
+                        ? <p className="mt-1 ml-2 text-[10px] text-red-500 font-bold">{deliveryError}</p>
+                        : deliveryLocation.trim().length >= 3 && (
+                          <div className="mt-2 ml-2 text-[10px] text-primary font-black uppercase tracking-tighter opacity-70">
+                            Full Address: {deliveryLocation}, Roxas, Or. Mindoro
+                          </div>
+                        )
+                      }
                     </div>
                   </div>
 
@@ -815,10 +904,30 @@ export default function App() {
                       type="tel"
                       required
                       placeholder="09xx xxxxxxx"
-                      value={phoneNumber} 
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${!phoneNumber ? 'border-orange-100' : 'border-transparent focus:border-primary'}`}
+                      value={phoneNumber}
+                      maxLength={11}
+                      inputMode="numeric"
+                      onChange={handlePhoneChange}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 11);
+                        setPhoneNumber(pasted);
+                        if (pasted.length === 11 && /^09/.test(pasted)) setPhoneError('');
+                        else if (pasted.length < 11) setPhoneError(`${11 - pasted.length} more digit${11 - pasted.length > 1 ? 's' : ''} needed.`);
+                        else setPhoneError('Must start with 09 (e.g. 09171234567).');
+                      }}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 tracking-widest transition-all ${
+                        phoneError ? 'border-red-300 bg-red-50' : phoneNumber.length === 11 ? 'border-green-300' : !phoneNumber ? 'border-orange-100' : 'border-orange-200'
+                      }`}
                     />
+                    <div className="flex items-center justify-between px-1">
+                      {phoneError
+                        ? <p className="text-[10px] text-red-500 font-bold">{phoneError}</p>
+                        : phoneNumber.length === 11
+                          ? <p className="text-[10px] text-green-600 font-bold">✓ Valid number</p>
+                          : <p className="text-[10px] text-gray-400">{phoneNumber.length}/11 digits</p>
+                      }
+                    </div>
                   </div>
                 </div>
                 
@@ -893,13 +1002,15 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              
+              </div>
+              <div className="px-8 pb-8 pt-4 bg-white rounded-b-[40px] border-t border-gray-100">
               <button 
                 onClick={() => setIsCheckoutModalOpen(false)} 
-                className="w-full mt-8 p-4 text-gray-400 font-bold hover:text-gray-600"
+                className="w-full mt-2 p-4 text-gray-400 font-bold hover:text-gray-600"
               >
                 Cancel and Go Back
               </button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -910,7 +1021,7 @@ export default function App() {
         {isRolePickerOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-primary/40 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative p-10 text-center">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative p-10 text-center">
               <h2 className="text-3xl font-black text-primary mb-4">Select Your Identity</h2>
               <p className="text-gray-500 mb-10 font-medium italic">How will you participate in the marketplace?</p>
               <div className="space-y-4 text-left">
@@ -938,7 +1049,7 @@ export default function App() {
         {isReceiptOpen && lastOrder && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative p-8 flex flex-col items-center">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-md rounded-[40px] shadow-2xl relative p-8 flex flex-col items-center max-h-[90vh] overflow-y-auto">
               <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
                 <CheckCircle size={32} />
               </div>
@@ -999,19 +1110,27 @@ export default function App() {
       {/* Add Product Modal */}
       <AnimatePresence>
         {isAddProductFormOpen && (
-          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddProductFormOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative p-8">
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4" onClick={() => setIsAddProductFormOpen(false)}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative p-8 max-h-[90vh] overflow-y-auto">
               <h2 className="text-3xl font-black text-primary mb-2 text-center">List New Product</h2>
               <p className="text-center text-gray-500 mb-8 font-medium italic">Grow your business, Mindoro style.</p>
               
-              <form onSubmit={handleAddProduct} className="space-y-4">
+              <form onSubmit={handleAddProduct} className="space-y-4" noValidate>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Product Name</label>
-                    <input name="name" required placeholder="e.g. Organic Calamansi" className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary rounded-2xl outline-none font-bold text-gray-700" />
+                    <input
+                      name="name"
+                      required
+                      maxLength={80}
+                      placeholder="e.g. Organic Calamansi"
+                      onChange={() => setProductErrors(p => ({ ...p, name: '' }))}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${productErrors.name ? 'border-red-300 bg-red-50' : 'border-transparent focus:border-primary'}`}
+                    />
+                    {productErrors.name && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.name}</p>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Category</label>
                     <select name="category" required className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary rounded-2xl outline-none font-bold text-gray-700">
                       <option value="agriculture">Agriculture</option>
@@ -1021,19 +1140,57 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Price (₱)</label>
-                    <input name="price" type="number" required placeholder="Price" className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary rounded-2xl outline-none font-bold text-gray-700" />
+                    <input
+                      name="price"
+                      type="number"
+                      required
+                      min={1}
+                      max={999999}
+                      step="0.01"
+                      placeholder="e.g. 150"
+                      onChange={() => setProductErrors(p => ({ ...p, price: '' }))}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${productErrors.price ? 'border-red-300 bg-red-50' : 'border-transparent focus:border-primary'}`}
+                    />
+                    {productErrors.price && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.price}</p>}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Stock</label>
-                    <input name="stock" type="number" required placeholder="Quantity" className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary rounded-2xl outline-none font-bold text-gray-700" />
+                    <input
+                      name="stock"
+                      type="number"
+                      required
+                      min={1}
+                      max={99999}
+                      step="1"
+                      placeholder="e.g. 50"
+                      onChange={() => setProductErrors(p => ({ ...p, stock: '' }))}
+                      className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${productErrors.stock ? 'border-red-300 bg-red-50' : 'border-transparent focus:border-primary'}`}
+                    />
+                    {productErrors.stock && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.stock}</p>}
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Description</label>
-                  <textarea name="description" rows={3} placeholder="Describe your product..." className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary rounded-2xl outline-none font-bold text-gray-700 resize-none"></textarea>
+                <div className="space-y-1">
+                  <div className="flex justify-between pl-2 pr-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</label>
+                    <span className="text-[10px] text-gray-300 font-bold" id="desc-counter">0/500</span>
+                  </div>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    maxLength={500}
+                    placeholder="Describe your product..."
+                    onChange={(e) => {
+                      const counter = document.getElementById('desc-counter');
+                      if (counter) counter.textContent = `${e.target.value.length}/500`;
+                      if (e.target.value.length >= 500) setProductErrors(p => ({ ...p, description: 'Maximum 500 characters reached.' }));
+                      else setProductErrors(p => ({ ...p, description: '' }));
+                    }}
+                    className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 resize-none transition-all ${productErrors.description ? 'border-red-300 bg-red-50' : 'border-transparent focus:border-primary'}`}
+                  ></textarea>
+                  {productErrors.description && <p className="text-[10px] text-red-500 font-bold pl-1">{productErrors.description}</p>}
                 </div>
 
                 <button type="submit" className="w-full py-4 bg-primary text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform mt-4">

@@ -39,6 +39,36 @@
       "role": "buyer",
       "location": "Roxas",
       "joinedDate": "5/15/2026"
+    },
+    {
+      "id": "USR-1778812841884",
+      "email": "lieksucin@gmail.com",
+      "username": "lieksucin",
+      "password": "$2b$10$EoqLFqr0Cnci0/KNSWQcEOHgVog6sWoD0YFsp6ciNmi1J/FAYgMhm",
+      "fullName": "Keil Nicus Castillon",
+      "role": "buyer",
+      "location": "Roxas",
+      "joinedDate": "5/15/2026"
+    },
+    {
+      "id": "USR-1778814644554",
+      "email": "email@email.com",
+      "username": "nics",
+      "password": "$2b$10$V3XR3NQmLN4hYvPeCRlTk.89lcvxYrsgi8.Tp6tu5HpWomifcAkMC",
+      "fullName": "Nicus",
+      "role": "farmer",
+      "location": "Roxas",
+      "joinedDate": "5/15/2026"
+    },
+    {
+      "id": "USR-1778814714249",
+      "email": "test@example.com",
+      "username": "cast",
+      "password": "$2b$10$YxxbcooFyYrepTx0lPYOHOq5lde02j8VUIpnpsB8MiIUkqH6iGDsK",
+      "fullName": "Castillon",
+      "role": "artisan",
+      "location": "Roxas",
+      "joinedDate": "5/15/2026"
     }
   ],
   "products": [
@@ -58,8 +88,8 @@
       "_id": "m-2",
       "name": "Artisan Basket",
       "price": 450,
-      "stock": 30,
-      "sold": 0,
+      "stock": 27,
+      "sold": 3,
       "category": "craft",
       "producer": "Lola Artisans",
       "producerId": "mock-2",
@@ -70,8 +100,8 @@
       "_id": "m-3",
       "name": "Calamansi",
       "price": 50,
-      "stock": 103,
-      "sold": 2,
+      "stock": 101,
+      "sold": 4,
       "category": "agriculture",
       "producer": "Dexcem Gutierrez",
       "producerId": "mock-6",
@@ -82,8 +112,8 @@
       "_id": "m-4",
       "name": "Lansones",
       "price": 150,
-      "stock": 60,
-      "sold": 0,
+      "stock": 58,
+      "sold": 2,
       "category": "agriculture",
       "producer": "Roxas Orchard",
       "producerId": "mock-7",
@@ -113,6 +143,30 @@
       "image": "https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400",
       "description": "masarap",
       "_id": "mem-p-1778810433344"
+    },
+    {
+      "name": "Keil Nicus Castillon",
+      "price": 150,
+      "stock": 22,
+      "sold": 1,
+      "category": "agriculture",
+      "producer": "Nicus",
+      "producerId": "USR-1778814644554",
+      "image": "https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400",
+      "description": "Test",
+      "_id": "mem-p-1778814677340"
+    },
+    {
+      "name": "test",
+      "price": 1,
+      "stock": 2,
+      "sold": 0,
+      "category": "craft",
+      "producer": "Castillon",
+      "producerId": "USR-1778814714249",
+      "image": "https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400",
+      "description": "The best",
+      "_id": "mem-p-1778814739597"
     }
   ],
   "orders": [
@@ -202,6 +256,223 @@
       "phoneNumber": "09123456789",
       "orderDate": "2026-05-15T01:57:59.607Z",
       "_id": "ord-1778810279609"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "_id": "m-3",
+          "name": "Calamansi",
+          "price": 50,
+          "stock": 103,
+          "sold": 2,
+          "category": "agriculture",
+          "producer": "Dexcem Gutierrez",
+          "producerId": "mock-6",
+          "image": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400",
+          "description": "Tangy local citrus",
+          "id": "m-3",
+          "quantity": 1
+        },
+        {
+          "_id": "m-4",
+          "name": "Lansones",
+          "price": 150,
+          "stock": 60,
+          "sold": 0,
+          "category": "agriculture",
+          "producer": "Roxas Orchard",
+          "producerId": "mock-7",
+          "image": "https://images.unsplash.com/photo-1621501438991-da55928f629c?w=400",
+          "description": "Sweet and juicy local lansones",
+          "id": "m-4",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 200,
+      "deliveryFee": 50,
+      "total": 250,
+      "paymentMethod": "cod",
+      "status": "pending",
+      "deliveryLocation": "Roxas, Roxas, Or. Mindoro",
+      "phoneNumber": "090909090909",
+      "orderDate": "2026-05-15T02:45:16.012Z",
+      "_id": "ord-1778813116033"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "_id": "m-3",
+          "name": "Calamansi",
+          "price": 50,
+          "stock": 102,
+          "sold": 3,
+          "category": "agriculture",
+          "producer": "Dexcem Gutierrez",
+          "producerId": "mock-6",
+          "image": "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=400",
+          "description": "Tangy local citrus",
+          "id": "m-3",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 50,
+      "deliveryFee": 50,
+      "total": 100,
+      "paymentMethod": "cod",
+      "status": "pending",
+      "deliveryLocation": "Dangay, Roxas, Or. Mindoro",
+      "phoneNumber": "09105188857",
+      "orderDate": "2026-05-15T03:02:40.997Z",
+      "_id": "ord-1778814161045"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "_id": "m-4",
+          "name": "Lansones",
+          "price": 150,
+          "stock": 59,
+          "sold": 1,
+          "category": "agriculture",
+          "producer": "Roxas Orchard",
+          "producerId": "mock-7",
+          "image": "https://images.unsplash.com/photo-1621501438991-da55928f629c?w=400",
+          "description": "Sweet and juicy local lansones",
+          "id": "m-4",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 150,
+      "deliveryFee": 50,
+      "total": 200,
+      "paymentMethod": "cod",
+      "status": "pending",
+      "deliveryLocation": "Roxas, Roxas, Or. Mindoro",
+      "phoneNumber": "09039013902",
+      "orderDate": "2026-05-15T03:03:05.070Z",
+      "_id": "ord-1778814185074"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "_id": "m-2",
+          "name": "Artisan Basket",
+          "price": 450,
+          "stock": 30,
+          "sold": 0,
+          "category": "craft",
+          "producer": "Lola Artisans",
+          "producerId": "mock-2",
+          "image": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400",
+          "description": "Handcrafted traditional basket",
+          "id": "m-2",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 450,
+      "deliveryFee": 50,
+      "total": 500,
+      "paymentMethod": "cod",
+      "status": "pending",
+      "deliveryLocation": "Dangay, Roxas, Or. Mindoro",
+      "phoneNumber": "09111321312",
+      "orderDate": "2026-05-15T03:04:08.397Z",
+      "_id": "ord-1778814248401"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "_id": "m-2",
+          "name": "Artisan Basket",
+          "price": 450,
+          "stock": 29,
+          "sold": 1,
+          "category": "craft",
+          "producer": "Lola Artisans",
+          "producerId": "mock-2",
+          "image": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400",
+          "description": "Handcrafted traditional basket",
+          "id": "m-2",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 450,
+      "deliveryFee": 50,
+      "total": 500,
+      "paymentMethod": "cod",
+      "status": "pending",
+      "deliveryLocation": "Roxas, Roxas, Or. Mindoro",
+      "phoneNumber": "09132312321",
+      "orderDate": "2026-05-15T03:06:17.341Z",
+      "_id": "ord-1778814377345"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "_id": "m-2",
+          "name": "Artisan Basket",
+          "price": 450,
+          "stock": 28,
+          "sold": 2,
+          "category": "craft",
+          "producer": "Lola Artisans",
+          "producerId": "mock-2",
+          "image": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400",
+          "description": "Handcrafted traditional basket",
+          "id": "m-2",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 450,
+      "deliveryFee": 50,
+      "total": 500,
+      "paymentMethod": "gcash",
+      "status": "pending",
+      "deliveryLocation": "Dangay, Roxas, Or. Mindoro",
+      "phoneNumber": "09105188886",
+      "orderDate": "2026-05-15T03:09:20.150Z",
+      "_id": "ord-1778814560371"
+    },
+    {
+      "userId": "USR-1778812841884",
+      "userName": "Keil Nicus Castillon",
+      "items": [
+        {
+          "name": "Keil Nicus Castillon",
+          "price": 150,
+          "stock": 23,
+          "sold": 0,
+          "category": "agriculture",
+          "producer": "Nicus",
+          "producerId": "USR-1778814644554",
+          "image": "https://images.unsplash.com/photo-1596456930735-36b4a4b974c4?w=400",
+          "description": "Test",
+          "_id": "mem-p-1778814677340",
+          "id": "mem-p-1778814677340",
+          "quantity": 1
+        }
+      ],
+      "subtotal": 150,
+      "deliveryFee": 50,
+      "total": 200,
+      "paymentMethod": "cod",
+      "status": "pending",
+      "deliveryLocation": "Dangay, Roxas, Or. Mindoro",
+      "phoneNumber": "09105188888",
+      "orderDate": "2026-05-15T03:12:47.203Z",
+      "_id": "ord-1778814767208"
     }
   ],
   "conversations": [
