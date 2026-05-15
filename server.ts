@@ -5,11 +5,12 @@ import { Server } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { createRepository } from './server/repository';
 
 dotenv.config();
 
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 const DB_FILE = path.join(process.cwd(), 'db.json');
 
 async function startServer() {
@@ -21,12 +22,28 @@ async function startServer() {
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // --- Repository setup ---
-  const { repo, connectMongo } = createRepository(process.env.MONGODB_URI, DB_FILE);
+  const { repo, connectMongo, status } = createRepository(process.env.MONGODB_URI, DB_FILE);
+  console.log(`[BOOT] MONGODB_URI provided: ${status.mongoUri}`);
+  console.log(`[BOOT] PORT: ${PORT}`);
   await connectMongo();
+  console.log(`[BOOT] Active adapter: ${status.adapter}`);
+  console.log(`[BOOT] Connection attempts: ${status.connectionAttempts}`);
 
   // --- Health check ---
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    res.json({ status: 'ok', adapter: status.adapter });
+  });
+
+  // --- Debug/diagnostic endpoint ---
+  app.get('/api/debug/status', (_req, res) => {
+    res.json({
+      adapter: status.adapter,
+      bootTime: status.bootTime,
+      mongoUriProvided: status.mongoUri,
+      connectionAttempts: status.connectionAttempts,
+      mongooseState: mongoose.connection.readyState,
+      uptime: process.uptime(),
+    });
   });
 
   // --- Product routes ---

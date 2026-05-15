@@ -29,6 +29,7 @@ var import_socket = require("socket.io");
 var import_vite = require("vite");
 var import_dotenv = __toESM(require("dotenv"), 1);
 var import_bcryptjs2 = __toESM(require("bcryptjs"), 1);
+var import_mongoose3 = __toESM(require("mongoose"), 1);
 
 // server/repository.ts
 var import_mongoose2 = __toESM(require("mongoose"), 1);
@@ -227,6 +228,13 @@ var MongoRepository = class {
       $inc: { stock: -soldQty, sold: soldQty }
     });
   }
+  async updateProduct(id, data) {
+    const product = await Product.findByIdAndUpdate(id, data, { new: true });
+    return product;
+  }
+  async deleteProduct(id) {
+    await Product.findByIdAndDelete(id);
+  }
   async listOrdersByUser(userId) {
     return Order.find({
       $or: [
@@ -359,6 +367,19 @@ var JsonFileRepository = class {
       await this.save();
     }
   }
+  async updateProduct(id, data) {
+    const index = this.db.products.findIndex((p) => p._id === id || p.id === id);
+    if (index !== -1) {
+      this.db.products[index] = { ...this.db.products[index], ...data };
+      await this.save();
+      return this.db.products[index];
+    }
+    return null;
+  }
+  async deleteProduct(id) {
+    this.db.products = this.db.products.filter((p) => p._id !== id && p.id !== id);
+    await this.save();
+  }
   async listOrdersByUser(userId) {
     return this.db.orders.filter(
       (o) => o.userId === userId || o.items.some((i) => i.producerId === userId)
@@ -410,45 +431,83 @@ function createRepository(mongoUri, dbFilePath) {
   const mongoRepo = new MongoRepository();
   const jsonRepo = new JsonFileRepository(dbFilePath);
   let activeRepo = jsonRepo;
+  const status = {
+    adapter: "json",
+    bootTime: (/* @__PURE__ */ new Date()).toISOString(),
+    mongoUri: !!mongoUri,
+    connectionAttempts: 0
+  };
   return {
     get repo() {
-      if (import_mongoose2.default.connection.readyState === 1) return mongoRepo;
-      return jsonRepo;
+      return activeRepo;
     },
+    status,
     connectMongo: async () => {
       if (!mongoUri) {
-        console.warn("MONGODB_URI not found. Using JSON file storage.");
+        console.warn("[REPO] MONGODB_URI not set. Using JSON file storage (development mode).");
+        activeRepo = jsonRepo;
+        status.adapter = "json";
         await jsonRepo.initialize();
         return false;
       }
-      try {
-        await import_mongoose2.default.connect(mongoUri, { serverSelectionTimeoutMS: 5e3 });
-        console.log("Connected to MongoDB");
-        await mongoRepo.initialize();
-        return true;
-      } catch (err) {
-        console.error("MongoDB connection error:", err);
-        console.log("Falling back to JSON file storage.");
-        await jsonRepo.initialize();
-        return false;
+      const attempts = [1e4, 2e4, 3e4];
+      for (let i = 0; i < attempts.length; i++) {
+        status.connectionAttempts = i + 1;
+        const timeout = attempts[i];
+        console.log(`[REPO] MongoDB connection attempt ${i + 1}/${attempts.length} (timeout: ${timeout / 1e3}s)...`);
+        try {
+          await import_mongoose2.default.connect(mongoUri, { serverSelectionTimeoutMS: timeout });
+          console.log(`[REPO] \u2705 Connected to MongoDB on attempt ${i + 1}`);
+          activeRepo = mongoRepo;
+          status.adapter = "mongo";
+          await mongoRepo.initialize();
+          return true;
+        } catch (err) {
+          console.error(`[REPO] \u274C MongoDB attempt ${i + 1} failed:`, err instanceof Error ? err.message : err);
+          try {
+            await import_mongoose2.default.disconnect();
+          } catch {
+          }
+        }
       }
+      console.error("[REPO] ===================================================");
+      console.error("[REPO] FATAL: MongoDB connection failed after all retries.");
+      console.error("[REPO] MONGODB_URI is set \u2014 refusing to fall back to JSON.");
+      console.error("[REPO] Fix your MongoDB connection and redeploy.");
+      console.error("[REPO] ===================================================");
+      process.exit(1);
     }
   };
 }
 
 // server.ts
 import_dotenv.default.config();
-var PORT = 3e3;
+var PORT = parseInt(process.env.PORT || "3000", 10);
 var DB_FILE = import_path.default.join(process.cwd(), "db.json");
 async function startServer() {
   const app = (0, import_express.default)();
   const httpServer = (0, import_http.createServer)(app);
   const io = new import_socket.Server(httpServer, { cors: { origin: "*" } });
-  app.use(import_express.default.json());
-  const { repo, connectMongo } = createRepository(process.env.MONGODB_URI, DB_FILE);
+  app.use(import_express.default.json({ limit: "50mb" }));
+  app.use(import_express.default.urlencoded({ limit: "50mb", extended: true }));
+  const { repo, connectMongo, status } = createRepository(process.env.MONGODB_URI, DB_FILE);
+  console.log(`[BOOT] MONGODB_URI provided: ${status.mongoUri}`);
+  console.log(`[BOOT] PORT: ${PORT}`);
   await connectMongo();
+  console.log(`[BOOT] Active adapter: ${status.adapter}`);
+  console.log(`[BOOT] Connection attempts: ${status.connectionAttempts}`);
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", adapter: status.adapter });
+  });
+  app.get("/api/debug/status", (_req, res) => {
+    res.json({
+      adapter: status.adapter,
+      bootTime: status.bootTime,
+      mongoUriProvided: status.mongoUri,
+      connectionAttempts: status.connectionAttempts,
+      mongooseState: import_mongoose3.default.connection.readyState,
+      uptime: process.uptime()
+    });
   });
   app.get("/api/products", async (_req, res) => {
     try {
@@ -462,6 +521,21 @@ async function startServer() {
       res.json(await repo.createProduct(req.body));
     } catch {
       res.status(500).json({ error: "Failed to create product" });
+    }
+  });
+  app.put("/api/products/:id", async (req, res) => {
+    try {
+      res.json(await repo.updateProduct(req.params.id, req.body));
+    } catch {
+      res.status(500).json({ error: "Failed to update product" });
+    }
+  });
+  app.delete("/api/products/:id", async (req, res) => {
+    try {
+      await repo.deleteProduct(req.params.id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete product" });
     }
   });
   app.post("/api/auth/register", async (req, res) => {

@@ -360,39 +360,71 @@ export class JsonFileRepository implements Repository {
 
 // --- Factory ---
 
+export type RepoStatus = {
+  adapter: 'mongo' | 'json';
+  bootTime: string;
+  mongoUri: boolean; // whether MONGODB_URI was provided (not the value)
+  connectionAttempts: number;
+};
+
 export function createRepository(mongoUri: string | undefined, dbFilePath: string): {
   repo: Repository;
   connectMongo: () => Promise<boolean>;
+  status: RepoStatus;
 } {
   const mongoRepo = new MongoRepository();
   const jsonRepo = new JsonFileRepository(dbFilePath);
 
   let activeRepo: Repository = jsonRepo;
+  const status: RepoStatus = {
+    adapter: 'json',
+    bootTime: new Date().toISOString(),
+    mongoUri: !!mongoUri,
+    connectionAttempts: 0,
+  };
 
   return {
     get repo() {
       return activeRepo;
     },
+    status,
     connectMongo: async () => {
       if (!mongoUri) {
-        console.warn('MONGODB_URI not found. Using JSON file storage.');
+        console.warn('[REPO] MONGODB_URI not set. Using JSON file storage (development mode).');
         activeRepo = jsonRepo;
+        status.adapter = 'json';
         await jsonRepo.initialize();
         return false;
       }
-      try {
-        await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
-        console.log('Connected to MongoDB');
-        activeRepo = mongoRepo;
-        await mongoRepo.initialize();
-        return true;
-      } catch (err) {
-        console.error('MongoDB connection error:', err);
-        console.log('Falling back to JSON file storage.');
-        activeRepo = jsonRepo;
-        await jsonRepo.initialize();
-        return false;
+
+      // Retry with increasing timeouts: 10s, 20s, 30s
+      const attempts = [10_000, 20_000, 30_000];
+      for (let i = 0; i < attempts.length; i++) {
+        status.connectionAttempts = i + 1;
+        const timeout = attempts[i];
+        console.log(`[REPO] MongoDB connection attempt ${i + 1}/${attempts.length} (timeout: ${timeout / 1000}s)...`);
+        try {
+          await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: timeout });
+          console.log(`[REPO] ✅ Connected to MongoDB on attempt ${i + 1}`);
+          activeRepo = mongoRepo;
+          status.adapter = 'mongo';
+          await mongoRepo.initialize();
+          return true;
+        } catch (err) {
+          console.error(`[REPO] ❌ MongoDB attempt ${i + 1} failed:`, err instanceof Error ? err.message : err);
+          // Disconnect any partial connection before retrying
+          try { await mongoose.disconnect(); } catch { /* ignore */ }
+        }
       }
+
+      // All retries exhausted. MONGODB_URI was set — user WANTS MongoDB.
+      // Falling back to JSON on an ephemeral filesystem is worse than crashing.
+      console.error('[REPO] ===================================================');
+      console.error('[REPO] FATAL: MongoDB connection failed after all retries.');
+      console.error('[REPO] MONGODB_URI is set — refusing to fall back to JSON.');
+      console.error('[REPO] Fix your MongoDB connection and redeploy.');
+      console.error('[REPO] ===================================================');
+      process.exit(1);
     },
   };
 }
