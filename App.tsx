@@ -24,6 +24,7 @@ import CheckoutModal from './components/modals/CheckoutModal';
 import RolePickerModal from './components/modals/RolePickerModal';
 import ReceiptModal from './components/modals/ReceiptModal';
 import AddProductModal from './components/modals/AddProductModal';
+import EditProductModal from './components/modals/EditProductModal';
 
 // Chat
 import ChatWindow from './components/ChatWindow';
@@ -53,6 +54,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'agriculture' | 'craft'>('all');
   const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
+  const [isEditProductFormOpen, setIsEditProductFormOpen] = useState(false);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productErrors, setProductErrors] = useState<Record<string, string>>({});
 
   // ---- Cart + Checkout ----
@@ -326,6 +329,53 @@ export default function App() {
     else setProductErrors((p) => ({ ...p, description: '' }));
   };
 
+  const handleEditProductSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!currentUser || !productToEdit) return;
+    const fd = new FormData(e.currentTarget);
+    const name = (fd.get('name') as string).trim();
+    const price = Number(fd.get('price'));
+    const stock = Number(fd.get('stock'));
+    const description = (fd.get('description') as string).trim();
+    const imageFile = fd.get('image') as File | null;
+
+    const errs = validateProduct({ name, price, stock, description });
+    if (Object.keys(errs).length > 0) { setProductErrors(errs); return; }
+    setProductErrors({});
+
+    let image = productToEdit.image;
+    if (imageFile && imageFile.size > 0) {
+      const getBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+      try {
+        image = await getBase64(imageFile);
+      } catch (err) {
+        console.error("Image read error", err);
+      }
+    }
+
+    try {
+      await api.products.update(productToEdit.id || productToEdit._id || '', {
+        name, price, stock, description, image
+      });
+      setIsEditProductFormOpen(false);
+      setProductToEdit(null);
+      fetchProducts();
+    } catch (error) { console.error('Error updating product:', error); }
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    if (!currentUser) return;
+    try {
+      await api.products.delete(product.id || product._id || '');
+      fetchProducts();
+    } catch (error) { console.error('Error deleting product:', error); }
+  };
+
   // ---- Navigation helpers ----
   const navigate = (section: Section) => { setActiveSection(section); setIsMenuOpen(false); };
 
@@ -368,6 +418,8 @@ export default function App() {
                 currentUser={currentUser} products={products} orders={orders}
                 conversations={conversations} cartSubtotal={cartSubtotal}
                 onAddProductOpen={() => setIsAddProductFormOpen(true)}
+                onEditProductOpen={(p) => { setProductToEdit(p); setIsEditProductFormOpen(true); }}
+                onDeleteProduct={handleDeleteProduct}
                 onOpenConversation={setActiveConversation}
               />
             )}
@@ -409,6 +461,14 @@ export default function App() {
         <AddProductModal
           isOpen={isAddProductFormOpen} currentUser={currentUser} productErrors={productErrors}
           onClose={() => setIsAddProductFormOpen(false)} onSubmit={handleAddProduct}
+          onClearError={(f) => setProductErrors((p) => ({ ...p, [f]: '' }))}
+          onDescriptionChange={handleDescriptionChange}
+        />
+      )}
+      {currentUser && isEditProductFormOpen && productToEdit && (
+        <EditProductModal
+          isOpen={isEditProductFormOpen} currentUser={currentUser} product={productToEdit} productErrors={productErrors}
+          onClose={() => { setIsEditProductFormOpen(false); setProductToEdit(null); }} onSubmit={handleEditProductSubmit}
           onClearError={(f) => setProductErrors((p) => ({ ...p, [f]: '' }))}
           onDescriptionChange={handleDescriptionChange}
         />

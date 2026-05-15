@@ -56,6 +56,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }).then(normalizeId),
+
+    update: (id: string, data: Partial<Product>): Promise<Product> =>
+      request<any>(`/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }).then(normalizeId),
+
+    delete: (id: string): Promise<{ success: boolean }> =>
+      request<{ success: boolean }>(`/products/${id}`, {
+        method: 'DELETE',
+      }),
   },
 
   auth: {

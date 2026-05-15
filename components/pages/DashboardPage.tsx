@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import {
-  LayoutDashboard, PlusCircle, MapPin, MessageSquare
+  LayoutDashboard, PlusCircle, MapPin, MessageSquare, Edit2, Trash2, Tag, Box
 } from 'lucide-react';
 import { User, Product, Order, Conversation } from '../../types';
 
@@ -12,12 +12,14 @@ interface DashboardPageProps {
   conversations: Conversation[];
   cartSubtotal: number;
   onAddProductOpen: () => void;
+  onEditProductOpen: (product: Product) => void;
+  onDeleteProduct: (product: Product) => void;
   onOpenConversation: (conv: Conversation) => void;
 }
 
 export default function DashboardPage({
   currentUser, products, orders, conversations, cartSubtotal,
-  onAddProductOpen, onOpenConversation,
+  onAddProductOpen, onEditProductOpen, onDeleteProduct, onOpenConversation,
 }: DashboardPageProps) {
   const isProducer = currentUser.role === 'farmer' || currentUser.role === 'artisan';
   const isFarmer = currentUser.role === 'farmer';
@@ -117,6 +119,42 @@ export default function DashboardPage({
               </>
             )}
           </div>
+
+          {/* Manage Products (Farmers/Artisans) */}
+          {isProducer && (
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-50 mt-8">
+              <h4 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
+                <Box size={20} className={colorScheme.text} /> Manage Listings
+              </h4>
+              {myProducts.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 italic">No items listed yet</div>
+              ) : (
+                <div className="space-y-4">
+                  {myProducts.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                      <div className="flex items-center gap-4">
+                        <img src={p.image} alt={p.name} className="w-16 h-16 object-cover rounded-xl" />
+                        <div>
+                          <p className="font-bold text-gray-800">{p.name}</p>
+                          <p className="text-xs text-gray-500 flex items-center gap-2">
+                            <Tag size={12} /> ₱{p.price} | Stock: {p.stock}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => onEditProductOpen(p)} className="p-3 bg-white text-gray-600 hover:text-blue-600 rounded-xl shadow-sm hover:shadow-md transition-all">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => { if(window.confirm('Delete this product?')) onDeleteProduct(p); }} className="p-3 bg-white text-gray-600 hover:text-red-600 rounded-xl shadow-sm hover:shadow-md transition-all">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Recent Chats */}
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-50">

@@ -24,6 +24,8 @@ export interface Repository {
   // Products
   listProducts(): Promise<any[]>;
   createProduct(data: any): Promise<any>;
+  updateProduct(id: string, data: any): Promise<any>;
+  deleteProduct(id: string): Promise<void>;
   updateProductStock(id: string, soldQty: number): Promise<void>;
 
   // Orders
@@ -95,6 +97,15 @@ export class MongoRepository implements Repository {
     await Product.findByIdAndUpdate(id, {
       $inc: { stock: -soldQty, sold: soldQty },
     });
+  }
+
+  async updateProduct(id: string, data: any): Promise<any> {
+    const product = await Product.findByIdAndUpdate(id, data, { new: true });
+    return product;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await Product.findByIdAndDelete(id);
   }
 
   async listOrdersByUser(userId: string): Promise<any[]> {
@@ -263,6 +274,21 @@ export class JsonFileRepository implements Repository {
       product.sold += soldQty;
       await this.save();
     }
+  }
+
+  async updateProduct(id: string, data: any): Promise<any> {
+    const index = this.db.products.findIndex((p) => p._id === id || p.id === id);
+    if (index !== -1) {
+      this.db.products[index] = { ...this.db.products[index], ...data };
+      await this.save();
+      return this.db.products[index];
+    }
+    return null;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    this.db.products = this.db.products.filter((p) => p._id !== id && p.id !== id);
+    await this.save();
   }
 
   async listOrdersByUser(userId: string): Promise<any[]> {

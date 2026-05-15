@@ -46,6 +46,23 @@ async function startServer() {
     }
   });
 
+  app.put('/api/products/:id', async (req, res) => {
+    try {
+      res.json(await repo.updateProduct(req.params.id, req.body));
+    } catch {
+      res.status(500).json({ error: 'Failed to update product' });
+    }
+  });
+
+  app.delete('/api/products/:id', async (req, res) => {
+    try {
+      await repo.deleteProduct(req.params.id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: 'Failed to delete product' });
+    }
+  });
+
   // --- Auth routes ---
   app.post('/api/auth/register', async (req, res) => {
     try {
