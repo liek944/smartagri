@@ -174,7 +174,7 @@ export default function App() {
     setPhoneError(validatePhone(pasted) || '');
   };
 
-  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeliveryChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const val = e.target.value.slice(0, 100);
     setDeliveryLocation(val);
     setDeliveryError(validateDelivery(val) || '');

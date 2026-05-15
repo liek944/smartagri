@@ -13,7 +13,7 @@ interface CheckoutModalProps {
   phoneError: string;
   deliveryError: string;
   onClose: () => void;
-  onDeliveryChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onDeliveryChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onPhoneChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPhonePaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
   onPaymentMethodChange: (method: 'gcash' | 'credit' | 'cod') => void;
@@ -73,27 +73,46 @@ export default function CheckoutModal({
                       Delivery Barangay
                     </label>
                     <div className="relative">
-                      <input
-                        type="text"
+                      <select
                         required
-                        placeholder="e.g. Odiong"
                         value={deliveryLocation}
-                        maxLength={100}
                         onChange={onDeliveryChange}
                         className={`w-full px-4 py-3 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all ${
                           deliveryError
                             ? 'border-red-300 bg-red-50'
-                            : deliveryLocation.trim().length >= 3
+                            : deliveryLocation
                               ? 'border-green-300'
-                              : !deliveryLocation
-                                ? 'border-orange-100'
-                                : 'border-orange-200'
+                              : 'border-orange-100'
                         }`}
-                      />
+                      >
+                        <option value="" disabled>Select your Barangay</option>
+                        <option value="Bagumbayan (Poblacion)">Bagumbayan (Poblacion)</option>
+                        <option value="Cantil">Cantil</option>
+                        <option value="Dangay">Dangay</option>
+                        <option value="Libertad">Libertad</option>
+                        <option value="Libtong">Libtong</option>
+                        <option value="Little Tanauan">Little Tanauan</option>
+                        <option value="Mabuhay">Mabuhay</option>
+                        <option value="Odiong">Odiong</option>
+                        <option value="Paclasan (Poblacion)">Paclasan (Poblacion)</option>
+                        <option value="San Aquilino">San Aquilino</option>
+                        <option value="San Isidro">San Isidro</option>
+                        <option value="San Mariano">San Mariano</option>
+                        <option value="San Miguel">San Miguel</option>
+                        <option value="San Rafael">San Rafael</option>
+                        <option value="Uyao">Uyao</option>
+                        <option value="Victoria">Victoria</option>
+                        <option value="Happy Valley">Happy Valley</option>
+                        <option value="Maraska">Maraska</option>
+                        <option value="San Jose">San Jose</option>
+                        <option value="San Vicente">San Vicente</option>
+                        <option value="Dangay Port / Dalahican">Dangay Port / Dalahican</option>
+                        <option value="Uyao North">Uyao North</option>
+                      </select>
                       {deliveryError ? (
                         <p className="mt-1 ml-2 text-[10px] text-red-500 font-bold">{deliveryError}</p>
                       ) : (
-                        deliveryLocation.trim().length >= 3 && (
+                        deliveryLocation && (
                           <div className="mt-2 ml-2 text-[10px] text-primary font-black uppercase tracking-tighter opacity-70">
                             Full Address: {deliveryLocation}, Roxas, Or. Mindoro
                           </div>
