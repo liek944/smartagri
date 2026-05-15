@@ -406,9 +406,10 @@ export default function App() {
                 onAddProductOpen={() => setIsAddProductFormOpen(true)}
               />
             )}
-            {activeSection === 'orders' && (
+            {activeSection === 'orders' && currentUser && (
               <OrdersPage
                 orders={orders}
+                currentUser={currentUser}
                 onViewReceipt={(o) => { setLastOrder(o); setIsReceiptOpen(true); }}
                 onGoShopping={() => setActiveSection('home')}
               />
