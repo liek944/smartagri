@@ -88,9 +88,24 @@ export default function Navbar({
           )}
         </div>
 
-        <button className="md:hidden p-2" onClick={onMenuToggle}>
-          {isMenuOpen ? <X /> : <Menu />}
-        </button>
+        <div className="md:hidden flex items-center gap-2">
+          {currentUser?.role === 'buyer' && (
+            <button
+              onClick={onCartOpen}
+              className="relative p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <ShoppingCart size={22} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold h-5 w-5 flex items-center justify-center rounded-full border-2 border-primary">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+          )}
+          <button className="p-2" onClick={onMenuToggle}>
+            {isMenuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
       </div>
     </nav>
   );

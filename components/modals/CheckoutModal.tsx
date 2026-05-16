@@ -44,11 +44,11 @@ export default function CheckoutModal({
             onClick={(e) => e.stopPropagation()}
             className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative flex flex-col max-h-[90vh]"
           >
-            <div className="p-8 pb-0">
+            <div className="p-4 sm:p-8 pb-0 sm:pb-0">
               <h2 className="text-3xl font-black text-primary mb-2 text-center">Complete Your Order</h2>
               <p className="text-center text-gray-500 mb-4 font-medium italic">Support local, stay digital.</p>
             </div>
-            <div className="overflow-y-auto flex-grow px-8">
+            <div className="overflow-y-auto flex-grow px-4 sm:px-8">
               <div className="space-y-6 pb-4">
                 {/* Order summary */}
                 <div className="bg-gray-50 p-6 rounded-3xl space-y-3">
@@ -247,7 +247,7 @@ export default function CheckoutModal({
                 </div>
               </div>
             </div>
-            <div className="px-8 pb-8 pt-4 bg-white rounded-b-[40px] border-t border-gray-100">
+            <div className="px-4 sm:px-8 pb-4 sm:pb-8 pt-4 bg-white rounded-b-[40px] border-t border-gray-100">
               <button
                 onClick={onClose}
                 className="w-full mt-2 p-4 text-gray-400 font-bold hover:text-gray-600"

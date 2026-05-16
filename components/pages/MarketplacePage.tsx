@@ -120,25 +120,25 @@ function ProductActions({
 }) {
   if (currentUser?.role === 'buyer') {
     return (
-      <div className="flex gap-2">
+      <div className="flex flex-wrap sm:flex-nowrap gap-2">
         <button
           onClick={() => onBuyNow(product)}
           disabled={product.stock === 0}
-          className="flex-grow bg-primary text-white py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition-transform disabled:bg-gray-300 disabled:scale-100 disabled:cursor-not-allowed uppercase tracking-wider text-xs"
+          className="flex-grow bg-primary text-white py-3 rounded-2xl font-black shadow-lg hover:scale-105 transition-transform disabled:bg-gray-300 disabled:scale-100 disabled:cursor-not-allowed uppercase tracking-wider text-xs whitespace-nowrap"
         >
           Order Now
         </button>
         <button
           onClick={() => onAddToCart(product)}
           disabled={product.stock === 0}
-          className="p-3 bg-primary/10 text-primary rounded-2xl hover:bg-primary/20 transition-colors disabled:opacity-50"
+          className="p-3 bg-primary/10 text-primary rounded-2xl hover:bg-primary/20 transition-colors disabled:opacity-50 flex-shrink-0"
           title="Add to Cart"
         >
           <ShoppingCart size={20} />
         </button>
         <button
           onClick={() => onStartChat(product)}
-          className="p-3 bg-secondary/10 text-secondary rounded-2xl hover:bg-secondary/20 transition-colors"
+          className="p-3 bg-secondary/10 text-secondary rounded-2xl hover:bg-secondary/20 transition-colors flex-shrink-0"
           title="Message Seller"
         >
           <MessageCircle size={20} />
