@@ -42,6 +42,7 @@ export interface Order {
   status: 'pending' | 'paid' | 'processing' | 'completed' | 'cancelled';
   orderDate: string;
   deliveryLocation?: string;
+  phoneNumber?: string;
   paymentDetails?: any;
 }
 

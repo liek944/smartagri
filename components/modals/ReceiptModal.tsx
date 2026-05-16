@@ -40,8 +40,8 @@ export default function ReceiptModal({ isOpen, order, onClose, onViewOrders }: R
                 <div className="flex justify-between text-primary text-lg"><span>TOTAL</span><span>₱{order.total}</span></div>
               </div>
               <div className="mt-4 pt-4 border-t-2 border-white text-[10px] text-gray-400 text-center uppercase tracking-widest leading-relaxed">
-                Delivery: {(order as any).deliveryLocation}<br />
-                Contact: {(order as any).phoneNumber || 'N/A'}<br />
+                Delivery: {order.deliveryLocation}<br />
+                Contact: {order.phoneNumber || 'N/A'}<br />
                 {new Date(order.orderDate).toLocaleString()}
               </div>
             </div>

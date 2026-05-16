@@ -38,6 +38,8 @@ const OrderSchema = new mongoose.Schema({
   paymentMethod: String,
   status: String,
   orderDate: String,
+  deliveryLocation: String,
+  phoneNumber: String,
 });
 
 const MessageSchema = new mongoose.Schema({
