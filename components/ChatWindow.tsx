@@ -21,6 +21,61 @@ function getSupportedMimeType(): string {
   return ''; // Let the browser choose its default
 }
 
+/**
+ * AudioPlayer: converts a base64 data URL to a Blob URL before rendering.
+ *
+ * WHY: iOS Chrome (WebKit) cannot reliably load data:audio/... URIs in <audio>
+ * elements — it renders the native error indicator even though playback may
+ * partially work. Blob URLs (blob://...) are fully supported everywhere.
+ * We revoke the URL on unmount to avoid memory leaks.
+ */
+function AudioPlayer({ src }: { src: string }) {
+  const [blobUrl, setBlobUrl] = useState<string>('');
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let objectUrl = '';
+    try {
+      // Parse the data URL: "data:<mime>;base64,<data>"
+      const commaIdx = src.indexOf(',');
+      const header = src.slice(0, commaIdx);        // e.g. "data:audio/mp4;base64"
+      const b64data = src.slice(commaIdx + 1);      // the raw base64 string
+      const mimeMatch = header.match(/data:([^;]+)/);
+      const mime = mimeMatch ? mimeMatch[1] : 'audio/mp4';
+
+      const byteChars = atob(b64data);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteArray[i] = byteChars.charCodeAt(i);
+      }
+      const blob = new Blob([byteArray], { type: mime });
+      objectUrl = URL.createObjectURL(blob);
+      setBlobUrl(objectUrl);
+    } catch {
+      setHasError(true);
+    }
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [src]);
+
+  if (hasError) {
+    return <span className="text-xs opacity-60 italic">Audio unavailable</span>;
+  }
+  if (!blobUrl) {
+    return <span className="text-xs opacity-50">Loading...</span>;
+  }
+  return (
+    <audio
+      src={blobUrl}
+      controls
+      className="h-8 max-w-full"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
 interface ChatWindowProps {
   conversation: Conversation;
   currentUser: User;
@@ -242,7 +297,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
                        <Volume2 size={14} className={isMe ? 'text-white' : 'text-primary'} />
                        <span className="text-[10px] uppercase font-bold opacity-70">Voice Message</span>
                     </div>
-                    <audio src={msg.audio} controls className="h-8 max-w-full" />
+                    <AudioPlayer src={msg.audio} />
                   </div>
                 ) : (
                   msg.text
