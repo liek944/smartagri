@@ -1,7 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, X, MessageSquare, Mic, MicOff, Volume2, CheckCircle } from 'lucide-react';
+import { Send, X, Mic, Volume2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Conversation, ChatMessage, User } from '../types';
+
+/**
+ * Detect the best supported MIME type for audio recording.
+ * Safari/iOS only supports audio/mp4. Chrome/Android supports audio/webm.
+ * Falling back through the list ensures cross-browser compatibility.
+ */
+function getSupportedMimeType(): string {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4',
+  ];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return ''; // Let the browser choose its default
+}
 
 interface ChatWindowProps {
   conversation: Conversation;
@@ -14,16 +32,31 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
   const [newMessage, setNewMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const mimeTypeRef = useRef<string>('');
 
   const startRecording = async () => {
+    setRecordingError(null);
     try {
+      // Check if the API is even available (not available on HTTP in some browsers)
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setRecordingError('Microphone not supported. Make sure the site is loaded over HTTPS.');
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      // Detect the right format for this browser/device (Safari needs mp4, Chrome uses webm)
+      const mimeType = getSupportedMimeType();
+      mimeTypeRef.current = mimeType;
+
+      const recorderOptions = mimeType ? { mimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -34,25 +67,50 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+
+        const effectiveMime = mimeTypeRef.current || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: effectiveMime });
+
+        // Guard: warn if recording is very large (> 2MB as base64 ~= 1.5MB raw)
+        if (audioBlob.size > 1_500_000) {
+          setRecordingError('Recording too long — please keep voice messages under ~1 minute.');
+          return;
+        }
+
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
           const base64Audio = reader.result as string;
           sendAudioMessage(base64Audio);
         };
-        stream.getTracks().forEach(track => track.stop());
+        reader.onerror = () => {
+          setRecordingError('Failed to process audio. Please try again.');
+        };
       };
 
-      mediaRecorder.start();
+      mediaRecorder.onerror = () => {
+        setRecordingError('Recording failed. Please try again.');
+        setIsRecording(false);
+        if (timerRef.current) clearInterval(timerRef.current);
+      };
+
+      // timeslice=250ms: flush chunks every 250ms so data isn't lost if stop() races with socket
+      mediaRecorder.start(250);
       setIsRecording(true);
       setRecordingDuration(0);
       timerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
-    } catch (err) {
-      console.error("Error accessing microphone:", err);
-      alert("Microphone access denied or not available.");
+    } catch (err: any) {
+      console.error('Error accessing microphone:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setRecordingError('Microphone permission denied. Please allow microphone access in your browser settings.');
+      } else if (err.name === 'NotFoundError') {
+        setRecordingError('No microphone found on this device.');
+      } else {
+        setRecordingError('Could not access microphone. Try refreshing the page.');
+      }
     }
   };
 
@@ -195,6 +253,15 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
         })}
         <div ref={scrollRef} />
       </div>
+
+      {/* Recording error banner */}
+      {recordingError && (
+        <div className="mx-3 mb-1 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2">
+          <AlertCircle size={13} className="mt-0.5 shrink-0" />
+          <span className="leading-snug">{recordingError}</span>
+          <button onClick={() => setRecordingError(null)} className="ml-auto shrink-0 opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
 
       <form onSubmit={handleSendMessage} className="p-3 bg-white flex gap-2 items-center">
         {isRecording ? (
