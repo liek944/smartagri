@@ -59,10 +59,7 @@ export default function App() {
   const [productErrors, setProductErrors] = useState<Record<string, string>>({});
 
   // ---- Cart + Checkout ----
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('sac_cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [deliveryLocation, setDeliveryLocation] = useState('');
@@ -115,8 +112,18 @@ export default function App() {
     api.conversations.list(currentUser.id).then(setConversations).catch(() => setConversations([]));
   }, [currentUser, activeSection]);
 
+  // Load cart when user changes
+  useEffect(() => {
+    const key = currentUser ? `sac_cart_${currentUser.id}` : 'sac_cart_guest';
+    const saved = localStorage.getItem(key);
+    setCart(saved ? JSON.parse(saved) : []);
+  }, [currentUser]);
+
   // Persist cart
-  useEffect(() => { localStorage.setItem('sac_cart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => {
+    const key = currentUser ? `sac_cart_${currentUser.id}` : 'sac_cart_guest';
+    localStorage.setItem(key, JSON.stringify(cart));
+  }, [cart, currentUser]);
 
   // ===========================================================================
   // Derived state
@@ -124,7 +131,12 @@ export default function App() {
 
   const filteredProducts = useMemo(() =>
     products.filter((p) => {
-      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        p.name.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.producer && p.producer.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q));
       const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
       return matchesSearch && matchesCategory;
     }), [products, searchQuery, categoryFilter]);

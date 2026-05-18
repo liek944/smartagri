@@ -20,6 +20,21 @@ export default function AddProductModal({
   const color = isFarmer ? { bg: 'bg-green-100', text: 'text-green-700', btn: 'bg-green-600 hover:bg-green-700' }
     : { bg: 'bg-purple-100', text: 'text-purple-700', btn: 'bg-purple-600 hover:bg-purple-700' };
 
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -74,7 +89,12 @@ export default function AddProductModal({
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Product Image (Optional)</label>
-                <input name="image" type="file" accept="image/*"
+                {imagePreview && (
+                  <div className="mb-2">
+                    <img src={imagePreview} alt="Preview" className="h-32 w-full object-cover rounded-xl" />
+                  </div>
+                )}
+                <input name="image" type="file" accept="image/*" onChange={handleImageChange}
                   className={`w-full px-4 py-2 bg-gray-50 border-2 rounded-2xl outline-none font-bold text-gray-700 transition-all border-transparent focus:border-primary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:cursor-pointer cursor-pointer file:transition-colors ${isFarmer ? 'file:bg-green-100 file:text-green-700 hover:file:bg-green-200' : 'file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200'}`} />
               </div>
               <div className="space-y-1">

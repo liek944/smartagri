@@ -61,50 +61,68 @@ export default function MarketplacePage({
         )}
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {filteredProducts.map((product) => (
-          <motion.div
-            key={product.id}
-            whileHover={{ y: -5 }}
-            className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-50 flex flex-col"
+      {filteredProducts.length === 0 ? (
+        <div className="py-20 text-center flex flex-col items-center justify-center bg-white rounded-3xl border border-gray-100 shadow-sm">
+          <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <Search className="text-gray-400" size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">No products found</h2>
+          <p className="text-gray-500 max-w-md mx-auto mb-8">
+            We couldn't find any products matching "{searchQuery}" in this category.
+          </p>
+          <button
+            onClick={() => { onSearchChange(''); onCategoryChange('all'); }}
+            className="px-6 py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
           >
-            <div className="h-56 bg-gray-100 relative group">
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              />
-              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm">
-                {product.category.toUpperCase()}
-              </div>
-            </div>
-            <div className="p-6 flex-grow flex flex-col">
-              <h3 className="text-xl font-bold text-gray-800 mb-1">{product.name}</h3>
-              <p className="text-sm text-gray-500 mb-3 truncate">By {product.producer}</p>
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-2xl font-black text-primary">₱{product.price}</span>
-                <span
-                  className={`text-xs px-3 py-1 rounded-full font-medium ${
-                    product.stock > 10 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                  }`}
-                >
-                  {product.stock > 0 ? `${product.stock} in stock` : 'Out of Stock'}
-                </span>
-              </div>
-              <div className="flex flex-col gap-2">
-                <ProductActions
-                  product={product}
-                  currentUser={currentUser}
-                  onAddToCart={onAddToCart}
-                  onBuyNow={onBuyNow}
-                  onStartChat={onStartChat}
-                  onEditProductOpen={onEditProductOpen}
+            Clear Search
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {filteredProducts.map((product) => (
+            <motion.div
+              key={product.id}
+              whileHover={{ y: -5 }}
+              className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-50 flex flex-col"
+            >
+              <div className="h-56 bg-gray-100 relative group">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm">
+                  {product.category.toUpperCase()}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+              <div className="p-6 flex-grow flex flex-col">
+                <h3 className="text-xl font-bold text-gray-800 mb-1">{product.name}</h3>
+                <p className="text-sm text-gray-500 mb-3 truncate">By {product.producer}</p>
+                <div className="flex justify-between items-center mb-6">
+                  <span className="text-2xl font-black text-primary">₱{product.price}</span>
+                  <span
+                    className={`text-xs px-3 py-1 rounded-full font-medium ${
+                      product.stock > 10 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                    }`}
+                  >
+                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of Stock'}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <ProductActions
+                    product={product}
+                    currentUser={currentUser}
+                    onAddToCart={onAddToCart}
+                    onBuyNow={onBuyNow}
+                    onStartChat={onStartChat}
+                    onEditProductOpen={onEditProductOpen}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
