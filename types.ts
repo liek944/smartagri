@@ -8,6 +8,8 @@ export interface User {
   role: UserRole;
   location: string;
   joinedDate: string;
+  deliveryLocation?: string;
+  phoneNumber?: string;
 }
 
 export interface Product {

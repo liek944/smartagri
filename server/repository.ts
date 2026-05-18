@@ -31,6 +31,8 @@ export interface Repository {
   // Orders
   listOrdersByUser(userId: string): Promise<any[]>;
   createOrder(data: any): Promise<any>;
+  updateOrderStatus(id: string, status: string): Promise<any>;
+  findOrderById(id: string): Promise<any | null>;
 
   // Conversations
   listConversationsByUser(userId: string): Promise<any[]>;
@@ -120,6 +122,15 @@ export class MongoRepository implements Repository {
   async createOrder(data: any): Promise<any> {
     const order = new Order(data);
     await order.save();
+    return order;
+  }
+
+  async findOrderById(id: string): Promise<any | null> {
+    return Order.findById(id);
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<any> {
+    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
     return order;
   }
 
@@ -304,6 +315,20 @@ export class JsonFileRepository implements Repository {
     this.db.orders.push(newOrder);
     await this.save();
     return newOrder;
+  }
+
+  async findOrderById(id: string): Promise<any | null> {
+    return this.db.orders.find((o) => o._id === id || o.id === id) || null;
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<any> {
+    const order = this.db.orders.find((o) => o._id === id || o.id === id);
+    if (order) {
+      order.status = status;
+      await this.save();
+      return { ...order };
+    }
+    return null;
   }
 
   async listConversationsByUser(userId: string): Promise<any[]> {

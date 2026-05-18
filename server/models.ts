@@ -14,6 +14,8 @@ const UserSchema = new mongoose.Schema({
   role: String,
   location: String,
   joinedDate: String,
+  deliveryLocation: String,
+  phoneNumber: String,
 });
 
 const ProductSchema = new mongoose.Schema({

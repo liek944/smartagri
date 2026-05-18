@@ -17,11 +17,12 @@ interface MarketplacePageProps {
   onStartChat: (product: Product) => void;
   onAddProductOpen: () => void;
   onEditProductOpen: (product: Product) => void;
+  onProductClick: (product: Product) => void;
 }
 
 export default function MarketplacePage({
   currentUser, filteredProducts, searchQuery, categoryFilter,
-  onSearchChange, onCategoryChange, onAddToCart, onBuyNow, onStartChat, onAddProductOpen, onEditProductOpen,
+  onSearchChange, onCategoryChange, onAddToCart, onBuyNow, onStartChat, onAddProductOpen, onEditProductOpen, onProductClick,
 }: MarketplacePageProps) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -85,7 +86,10 @@ export default function MarketplacePage({
               whileHover={{ y: -5 }}
               className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-50 flex flex-col"
             >
-              <div className="h-56 bg-gray-100 relative group">
+              <button
+                onClick={() => onProductClick(product)}
+                className="h-56 bg-gray-100 relative group w-full text-left block"
+              >
                 <img
                   src={product.image}
                   alt={product.name}
@@ -94,9 +98,16 @@ export default function MarketplacePage({
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary shadow-sm">
                   {product.category.toUpperCase()}
                 </div>
-              </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-primary text-xs font-black px-4 py-2 rounded-full shadow-lg uppercase tracking-wider">
+                    View Details
+                  </span>
+                </div>
+              </button>
               <div className="p-6 flex-grow flex flex-col">
-                <h3 className="text-xl font-bold text-gray-800 mb-1">{product.name}</h3>
+                <button onClick={() => onProductClick(product)} className="text-left">
+                  <h3 className="text-xl font-bold text-gray-800 mb-1 hover:text-primary transition-colors">{product.name}</h3>
+                </button>
                 <p className="text-sm text-gray-500 mb-3 truncate">By {product.producer}</p>
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-2xl font-black text-primary">₱{product.price}</span>

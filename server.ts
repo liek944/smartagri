@@ -191,6 +191,37 @@ async function startServer() {
     }
   });
 
+  const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+    pending: ['processing', 'cancelled'],
+    processing: ['completed'],
+  };
+
+  app.patch('/api/orders/:id/status', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body as { status: string };
+      const order = await container.repo.findOrderById(id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+
+      const allowed = ALLOWED_TRANSITIONS[order.status] || [];
+      if (!allowed.includes(status)) {
+        return res.status(400).json({ error: `Cannot transition from '${order.status}' to '${status}'` });
+      }
+
+      // Restore stock when cancelling
+      if (status === 'cancelled') {
+        for (const item of order.items) {
+          await container.repo.updateProductStock(item.id, -item.quantity);
+        }
+      }
+
+      const updated = await container.repo.updateOrderStatus(id, status);
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: 'Failed to update order status' });
+    }
+  });
+
   // --- Conversation routes ---
   app.get('/api/conversations/:userId', async (req, res) => {
     try {

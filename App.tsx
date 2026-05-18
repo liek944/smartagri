@@ -25,6 +25,7 @@ import RolePickerModal from './components/modals/RolePickerModal';
 import ReceiptModal from './components/modals/ReceiptModal';
 import AddProductModal from './components/modals/AddProductModal';
 import EditProductModal from './components/modals/EditProductModal';
+import ProductDetailModal from './components/modals/ProductDetailModal';
 
 // Chat
 import ChatWindow from './components/ChatWindow';
@@ -57,6 +58,7 @@ export default function App() {
   const [isEditProductFormOpen, setIsEditProductFormOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productErrors, setProductErrors] = useState<Record<string, string>>({});
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // ---- Cart + Checkout ----
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -118,6 +120,12 @@ export default function App() {
     const saved = localStorage.getItem(key);
     setCart(saved ? JSON.parse(saved) : []);
   }, [currentUser]);
+
+  // Pre-fill delivery details from saved user profile
+  useEffect(() => {
+    if (currentUser?.deliveryLocation) setDeliveryLocation(currentUser.deliveryLocation);
+    if (currentUser?.phoneNumber) setPhoneNumber(currentUser.phoneNumber);
+  }, [currentUser?.id]);
 
   // Persist cart
   useEffect(() => {
@@ -214,6 +222,24 @@ export default function App() {
       setCart([]); setIsCheckoutModalOpen(false);
       setLastOrder(data); setIsReceiptOpen(true);
       fetchProducts();
+
+      // Persist delivery details on user profile if changed
+      if (
+        deliveryLocation !== currentUser.deliveryLocation ||
+        phoneNumber !== currentUser.phoneNumber
+      ) {
+        try {
+          const updatedUser = await api.users.save({
+            ...currentUser,
+            deliveryLocation,
+            phoneNumber,
+          });
+          setCurrentUser(updatedUser);
+          localStorage.setItem('sac_user', JSON.stringify(updatedUser));
+        } catch (err) {
+          console.warn('Could not persist delivery details:', err);
+        }
+      }
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Checkout failed. Please try again.');
@@ -391,6 +417,13 @@ export default function App() {
   // ---- Navigation helpers ----
   const navigate = (section: Section) => { setActiveSection(section); setIsMenuOpen(false); };
 
+  // ---- Order status update (2.2 + 2.3) ----
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const updated = await api.orders.updateStatus(orderId, status);
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...updated } : o)));
+    if (status === 'cancelled') fetchProducts(); // restore stock display
+  };
+
   // ===========================================================================
   // Render
   // ===========================================================================
@@ -417,6 +450,7 @@ export default function App() {
                 onAddToCart={addToCart} onBuyNow={buyNow} onStartChat={handleStartChat}
                 onAddProductOpen={() => setIsAddProductFormOpen(true)}
                 onEditProductOpen={(p) => { setProductToEdit(p); setIsEditProductFormOpen(true); }}
+                onProductClick={(p) => setSelectedProduct(p)}
               />
             )}
             {activeSection === 'orders' && currentUser && (
@@ -425,6 +459,7 @@ export default function App() {
                 currentUser={currentUser}
                 onViewReceipt={(o) => { setLastOrder(o); setIsReceiptOpen(true); }}
                 onGoShopping={() => setActiveSection('home')}
+                onUpdateOrderStatus={handleUpdateOrderStatus}
               />
             )}
             {activeSection === 'dashboard' && currentUser && (
@@ -470,6 +505,15 @@ export default function App() {
         isOpen={isReceiptOpen} order={lastOrder}
         onClose={() => setIsReceiptOpen(false)}
         onViewOrders={() => { setIsReceiptOpen(false); setActiveSection('orders'); }}
+      />
+      <ProductDetailModal
+        product={selectedProduct}
+        currentUser={currentUser}
+        onClose={() => setSelectedProduct(null)}
+        onAddToCart={addToCart}
+        onBuyNow={buyNow}
+        onStartChat={handleStartChat}
+        onEditProductOpen={(p) => { setProductToEdit(p); setIsEditProductFormOpen(true); }}
       />
       {currentUser && isAddProductFormOpen && (
         <AddProductModal

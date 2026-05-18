@@ -109,6 +109,12 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }).then(normalizeId),
+
+    updateStatus: (id: string, status: Order['status']): Promise<Order> =>
+      request<any>(`/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }).then(normalizeId),
   },
 
   conversations: {
