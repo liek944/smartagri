@@ -51,7 +51,7 @@ export default function EditProductModal({
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Category</label>
                   <div className={`w-full px-4 py-3 rounded-2xl font-black text-sm flex items-center gap-2 ${isFarmer ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
                     <span>{isFarmer ? '🌾' : '🎨'}</span>
-                    <span>{isFarmer ? 'Farmers' : 'Artisans'}</span>
+                    <span>{isFarmer ? 'Farmers' : 'Craft Producers'}</span>
                     <span className="ml-auto text-[10px] opacity-50 font-bold">LOCKED</span>
                   </div>
                 </div>

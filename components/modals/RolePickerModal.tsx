@@ -11,7 +11,7 @@ interface RolePickerModalProps {
 const ROLES = [
   { id: 'buyer' as UserRole, title: 'Buyer', desc: 'Shop for fresh goods and unique crafts', icon: ShoppingCart },
   { id: 'farmer' as UserRole, title: 'Farmer', desc: 'Sell your local harvests directly', icon: CheckCircle },
-  { id: 'artisan' as UserRole, title: 'Artisan', desc: 'Showcase your handcrafted creations', icon: Edit },
+  { id: 'artisan' as UserRole, title: 'Craft Producer', desc: 'Showcase your handcrafted creations', icon: Edit },
 ];
 
 export default function RolePickerModal({ isOpen, onPickRole }: RolePickerModalProps) {

@@ -52,7 +52,7 @@ export default function DashboardPage({
                       : 'bg-gray-100 text-gray-500'
               }`}
             >
-              {currentUser.role}
+              {currentUser.role === 'artisan' ? 'craft producer' : currentUser.role}
             </p>
             <div className="mt-6 pt-6 border-t border-gray-50 space-y-3 text-left">
               <p className="flex items-center gap-2 text-sm text-gray-600">
@@ -120,7 +120,7 @@ export default function DashboardPage({
             )}
           </div>
 
-          {/* Manage Products (Farmers/Artisans) */}
+          {/* Manage Products (Farmers/Craft Producers) */}
           {isProducer && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-50 mt-8">
               <h4 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">

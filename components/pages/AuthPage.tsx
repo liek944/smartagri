@@ -19,7 +19,7 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode }
       <div className="flex-1 text-center md:text-left">
         <h2 className="text-6xl font-black text-primary mb-6 tracking-tighter">SmartAgriCraft</h2>
         <p className="text-2xl font-medium text-gray-700 leading-tight">
-          Connect with local farmers and artisans in Oriental Mindoro. Authentically local.
+          Connect with local farmers and craft producers in Oriental Mindoro. Authentically local.
         </p>
       </div>
 
@@ -56,7 +56,7 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode }
                           className="peer hidden"
                         />
                         <div className="text-center py-2 border rounded-lg text-xs font-bold capitalize bg-white peer-checked:bg-primary peer-checked:text-white peer-checked:border-primary transition-all text-gray-600">
-                          {r}
+                          {r === 'artisan' ? 'craft producer' : r}
                         </div>
                       </label>
                     ))}

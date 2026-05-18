@@ -28,7 +28,7 @@ export default function MarketplacePage({
       <header className="mb-10 text-center py-10 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10">
         <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4 tracking-tight">Marketplace</h1>
         <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-8">
-          Oriental Mindoro's digital hub for local farmers and artisans.
+          Oriental Mindoro's digital hub for local farmers and craft producers.
         </p>
         <div className="max-w-xl mx-auto flex flex-col md:flex-row gap-4 px-4 bg-white p-3 rounded-2xl shadow-lg border border-gray-100">
           <div className="flex-grow relative">
