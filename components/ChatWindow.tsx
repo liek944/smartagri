@@ -85,6 +85,7 @@ interface ChatWindowProps {
 export default function ChatWindow({ conversation, currentUser, onClose }: ChatWindowProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isOnline, setIsOnline] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingError, setRecordingError] = useState<string | null>(null);
@@ -194,9 +195,28 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const otherUserId = Object.keys(conversation.participantNames).find(uid => uid !== currentUser?.id);
+
   useEffect(() => {
     // Connect to Socket.io
     socketRef.current = io();
+
+    // Tell server we are online
+    if (currentUser?.id) {
+      socketRef.current.emit('user_connected', currentUser.id);
+    }
+    
+    // Check initial status of the other user
+    if (otherUserId) {
+      socketRef.current.emit('check_status', otherUserId);
+    }
+
+    // Listen to status updates
+    socketRef.current.on('user_status', ({ userId, status }: { userId: string, status: string }) => {
+      if (userId === otherUserId) {
+        setIsOnline(status === 'online');
+      }
+    });
 
     // Fetch initial messages
     fetch(`/api/messages/${conversation.id}`)
@@ -217,7 +237,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
     return () => {
       socketRef.current?.disconnect();
     };
-  }, [conversation.id]);
+  }, [conversation.id, currentUser?.id, otherUserId]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -250,9 +270,15 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
             <p className="font-bold text-sm leading-none text-gray-800">
               {Object.entries(conversation.participantNames).find(([uid]) => uid !== currentUser?.id)?.[1] || 'Chat'}
             </p>
-            <p className="text-[10px] text-green-500 font-bold mt-1 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Active now
-            </p>
+            {isOnline ? (
+              <p className="text-[10px] text-green-500 font-bold mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Active now
+              </p>
+            ) : (
+              <p className="text-[10px] text-gray-400 font-bold mt-1 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full"></span> Offline
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">

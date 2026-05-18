@@ -236,8 +236,31 @@ async function startServer() {
     }
   });
 
+  // Global map to track online users: userId -> Set of socketIds
+  const onlineUsers = new Map<string, Set<string>>();
+
   // --- Socket.io for real-time chat ---
   io.on('connection', (socket) => {
+    let currentUserId: string | null = null;
+
+    // Client tells server they are online
+    socket.on('user_connected', (userId: string) => {
+      currentUserId = userId;
+      if (!onlineUsers.has(userId)) {
+        onlineUsers.set(userId, new Set());
+      }
+      onlineUsers.get(userId)!.add(socket.id);
+      
+      // Broadcast to everyone that this user is online
+      io.emit('user_status', { userId, status: 'online' });
+    });
+
+    socket.on('check_status', (userId: string) => {
+      // Send the status of a specific user back to the requester
+      const isOnline = onlineUsers.has(userId) && onlineUsers.get(userId)!.size > 0;
+      socket.emit('user_status', { userId, status: isOnline ? 'online' : 'offline' });
+    });
+
     socket.on('join_conversation', (conversationId) => {
       socket.join(conversationId);
     });
@@ -250,6 +273,19 @@ async function startServer() {
       });
       await container.repo.updateConversationLastMessage(conversationId, text);
       io.to(conversationId).emit('new_message', message);
+    });
+
+    socket.on('disconnect', () => {
+      if (currentUserId && onlineUsers.has(currentUserId)) {
+        const userSockets = onlineUsers.get(currentUserId)!;
+        userSockets.delete(socket.id);
+        
+        if (userSockets.size === 0) {
+          onlineUsers.delete(currentUserId);
+          // Broadcast to everyone that this user is offline
+          io.emit('user_status', { userId: currentUserId, status: 'offline' });
+        }
+      }
     });
   });
 
