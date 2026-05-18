@@ -16,11 +16,12 @@ interface MarketplacePageProps {
   onBuyNow: (product: Product) => void;
   onStartChat: (product: Product) => void;
   onAddProductOpen: () => void;
+  onEditProductOpen: (product: Product) => void;
 }
 
 export default function MarketplacePage({
   currentUser, filteredProducts, searchQuery, categoryFilter,
-  onSearchChange, onCategoryChange, onAddToCart, onBuyNow, onStartChat, onAddProductOpen,
+  onSearchChange, onCategoryChange, onAddToCart, onBuyNow, onStartChat, onAddProductOpen, onEditProductOpen,
 }: MarketplacePageProps) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -97,6 +98,7 @@ export default function MarketplacePage({
                   onAddToCart={onAddToCart}
                   onBuyNow={onBuyNow}
                   onStartChat={onStartChat}
+                  onEditProductOpen={onEditProductOpen}
                 />
               </div>
             </div>
@@ -110,13 +112,14 @@ export default function MarketplacePage({
 // --- Sub-component for product card actions ---
 
 function ProductActions({
-  product, currentUser, onAddToCart, onBuyNow, onStartChat,
+  product, currentUser, onAddToCart, onBuyNow, onStartChat, onEditProductOpen,
 }: {
   product: Product;
   currentUser: User | null;
   onAddToCart: (p: Product) => void;
   onBuyNow: (p: Product) => void;
   onStartChat: (p: Product) => void;
+  onEditProductOpen: (p: Product) => void;
 }) {
   if (currentUser?.role === 'buyer') {
     return (
@@ -149,7 +152,10 @@ function ProductActions({
 
   if (currentUser?.id === product.producerId) {
     return (
-      <button className="w-full py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold border-2 border-dashed border-gray-200 hover:bg-white hover:border-primary hover:text-primary transition-all">
+      <button
+        onClick={() => onEditProductOpen(product)}
+        className="w-full py-3 bg-gray-100 text-gray-500 rounded-2xl font-bold border-2 border-dashed border-gray-200 hover:bg-white hover:border-primary hover:text-primary transition-all"
+      >
         Manage your {product.name}
       </button>
     );

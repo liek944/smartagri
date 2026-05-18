@@ -404,6 +404,7 @@ export default function App() {
                 onSearchChange={setSearchQuery} onCategoryChange={setCategoryFilter}
                 onAddToCart={addToCart} onBuyNow={buyNow} onStartChat={handleStartChat}
                 onAddProductOpen={() => setIsAddProductFormOpen(true)}
+                onEditProductOpen={(p) => { setProductToEdit(p); setIsEditProductFormOpen(true); }}
               />
             )}
             {activeSection === 'orders' && currentUser && (
