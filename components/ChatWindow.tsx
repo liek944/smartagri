@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, X, Mic, Volume2, CheckCircle, AlertCircle, Image as ImageIcon, Camera } from 'lucide-react';
+import { Send, X, Mic, Volume2, CheckCircle, AlertCircle, Image as ImageIcon, Camera, RotateCw } from 'lucide-react';
 import { Conversation, ChatMessage, User } from '../types';
 
 /**
@@ -95,6 +95,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -107,7 +108,14 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
     };
   }, []);
 
-  const startCamera = async () => {
+  const startCamera = async (mode?: 'user' | 'environment') => {
+    const targetMode = mode === 'user' || mode === 'environment' ? mode : facingMode;
+    // Release any existing stream first
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
+    }
+    setCameraStream(null);
     setCameraError(null);
     setIsCameraActive(true);
     try {
@@ -115,7 +123,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
         throw new Error('Camera not supported on this browser or environment.');
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
+        video: { facingMode: targetMode },
         audio: false
       });
       setCameraStream(stream);
@@ -144,6 +152,13 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
     setCameraStream(null);
     setIsCameraActive(false);
     setCameraError(null);
+    setFacingMode('user'); // Reset to default front camera
+  };
+
+  const toggleCamera = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
   };
 
   const capturePhoto = () => {
@@ -154,8 +169,10 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.translate(canvas.width, 0);
-        ctx.scale(-1, 1);
+        if (facingMode === 'user') {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
@@ -581,7 +598,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
                 <p className="text-[11px] font-semibold leading-normal text-red-200">{cameraError}</p>
                 <button 
                   type="button"
-                  onClick={startCamera} 
+                  onClick={() => startCamera(facingMode)} 
                   className="mt-3.5 px-3 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shadow-md shadow-red-900/30"
                 >
                   Try Again
@@ -599,7 +616,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-full object-cover transform -scale-x-100"
+                  className={`w-full h-full object-cover ${facingMode === 'user' ? 'transform -scale-x-100' : ''}`}
                 />
                 <div className="absolute inset-0 border border-white/10 pointer-events-none rounded-xl" />
               </div>
@@ -608,13 +625,22 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
 
           {/* Capture Controls */}
           {cameraStream && !cameraError && (
-            <div className="p-4 bg-black/40 backdrop-blur-md flex justify-center items-center border-t border-white/5 shrink-0">
+            <div className="p-4 bg-black/40 backdrop-blur-md flex justify-center items-center border-t border-white/5 shrink-0 relative">
               <button
                 type="button"
                 onClick={capturePhoto}
                 className="w-14 h-14 rounded-full border-4 border-white flex items-center justify-center bg-transparent hover:bg-white/20 active:scale-95 transition-all shadow-lg relative group"
               >
                 <div className="w-10 h-10 rounded-full bg-white transition-transform group-hover:scale-90" />
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleCamera}
+                className="absolute right-6 p-3 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-full transition-all border border-white/10 shadow-lg backdrop-blur-md"
+                title="Switch Camera"
+              >
+                <RotateCw size={18} />
               </button>
             </div>
           )}
