@@ -19,6 +19,7 @@ import OrdersPage from './components/pages/OrdersPage';
 import DashboardPage from './components/pages/DashboardPage';
 import AuthPage from './components/pages/AuthPage';
 import AdminDashboardPage from './components/pages/AdminDashboardPage';
+import MessagesPage from './components/pages/MessagesPage';
 
 // Modals
 import CartModal from './components/modals/CartModal';
@@ -33,7 +34,7 @@ import ProductDetailModal from './components/modals/ProductDetailModal';
 import ChatWindow from './components/ChatWindow';
 
 // --- Types ---
-type Section = 'home' | 'orders' | 'dashboard' | 'auth' | 'admin';
+type Section = 'home' | 'orders' | 'dashboard' | 'auth' | 'admin' | 'messages';
 
 // ---------------------------------------------------------------------------
 // App — orchestrator that wires hooks, state, and components together.
@@ -631,6 +632,14 @@ export default function App() {
             )}
             {activeSection === 'admin' && currentUser?.role === 'admin' && (
               <AdminDashboardPage currentUser={currentUser} onNavigate={navigate} />
+            )}
+            {activeSection === 'messages' && currentUser && (
+              <MessagesPage
+                currentUser={currentUser}
+                conversations={conversations}
+                onConversationsChange={setConversations}
+                socketRef={socketRef}
+              />
             )}
           </>
         )}

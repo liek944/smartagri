@@ -143,11 +143,25 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }).then(normalizeId),
+
+    start: (data: {
+      participants: string[];
+      participantNames: Record<string, string>;
+    }): Promise<Conversation> =>
+      request<any>('/conversations/start', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }).then(normalizeId),
   },
 
   messages: {
     list: (conversationId: string): Promise<ChatMessage[]> =>
       request<ChatMessage[]>(`/messages/${conversationId}`),
+  },
+
+  sellers: {
+    list: (): Promise<User[]> =>
+      request<User[]>('/sellers'),
   },
 
   reviews: {

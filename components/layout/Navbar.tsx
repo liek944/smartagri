@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Store, ShoppingCart, LogIn, LogOut, Menu, X, Bell
+  Store, ShoppingCart, LogIn, LogOut, Menu, X, Bell, MessageSquare
 } from 'lucide-react';
 import { User } from '../../types';
 
@@ -8,7 +8,7 @@ interface NavbarProps {
   currentUser: User | null;
   activeSection: string;
   cartCount: number;
-  onNavigate: (section: 'home' | 'orders' | 'dashboard' | 'auth' | 'admin') => void;
+  onNavigate: (section: 'home' | 'orders' | 'dashboard' | 'auth' | 'admin' | 'messages') => void;
   onCartOpen: () => void;
   onLogout: () => void;
   onMenuToggle: () => void;
@@ -41,6 +41,14 @@ export default function Navbar({
           >
             Marketplace
           </button>
+          {currentUser && currentUser.role && (
+            <button
+              onClick={() => onNavigate('messages')}
+              className={`hover:bg-white/10 px-3 py-2 rounded-md transition-colors flex items-center gap-1.5 ${activeSection === 'messages' ? 'bg-white/20' : ''}`}
+            >
+              <MessageSquare size={16} /> Messages
+            </button>
+          )}
           {currentUser && currentUser.role && (
             <>
               <button

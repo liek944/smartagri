@@ -5,7 +5,7 @@ import { User } from '../../types';
 interface MobileMenuProps {
   isOpen: boolean;
   currentUser: User | null;
-  onNavigate: (section: 'home' | 'orders' | 'dashboard' | 'auth' | 'admin') => void;
+  onNavigate: (section: 'home' | 'orders' | 'dashboard' | 'auth' | 'admin' | 'messages') => void;
   onLogout: () => void;
 }
 
@@ -27,6 +27,12 @@ export default function MobileMenu({ isOpen, currentUser, onNavigate, onLogout }
           </button>
           {currentUser && currentUser.role && (
             <>
+              <button
+                onClick={() => onNavigate('messages')}
+                className="block w-full text-left py-2 border-b border-white/10"
+              >
+                Messages
+              </button>
               <button
                 onClick={() => onNavigate('orders')}
                 className="block w-full text-left py-2 border-b border-white/10"

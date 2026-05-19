@@ -1,5 +1,16 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": "USR-test",
+      "email": "test@test.com",
+      "password": "$2b$10$GXFKwLTTZ6VyNFBp5Tp.Y.hhxOsEl48zCYwp8iz1ppcLRH7c7dWGq",
+      "fullName": "Test User",
+      "username": "test",
+      "role": "buyer",
+      "location": "Roxas",
+      "joinedDate": "5/19/2026"
+    }
+  ],
   "products": [
     {
       "name": "🌾 API Test Rice",
@@ -15,5 +26,6 @@
   ],
   "orders": [],
   "conversations": [],
-  "messages": []
+  "messages": [],
+  "reviews": []
 }

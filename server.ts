@@ -302,6 +302,26 @@ async function startServer() {
     }
   });
 
+  // Unified user-to-user conversation (Messages tab)
+  app.post('/api/conversations/start', async (req, res) => {
+    try {
+      const { participants, participantNames } = req.body;
+
+      // Look for ANY existing conversation between these two users
+      let conversation = await container.repo.findConversationByParticipants(participants);
+      if (!conversation) {
+        conversation = await container.repo.createConversation({
+          participants, participantNames,
+          lastMessage: 'Chat started',
+          lastMessageTimestamp: new Date(),
+        });
+      }
+      res.json(conversation);
+    } catch {
+      res.status(500).json({ error: 'Failed to start conversation' });
+    }
+  });
+
   // --- Message routes ---
   app.get('/api/messages/:conversationId', async (req, res) => {
     try {
@@ -328,6 +348,15 @@ async function startServer() {
       }));
     } catch {
       res.status(500).json({ error: 'Failed to create review' });
+    }
+  });
+
+  // --- Sellers directory ---
+  app.get('/api/sellers', async (_req, res) => {
+    try {
+      res.json(await container.repo.listSellers());
+    } catch {
+      res.status(500).json({ error: 'Failed to fetch sellers' });
     }
   });
 
@@ -570,13 +599,29 @@ async function startServer() {
       });
       await container.repo.updateConversationLastMessage(conversationId, text);
       io.to(conversationId).emit('new_message', message);
-      
+
+      // Emit conversation_updated to both participants for real-time inbox reordering
+      const conversationUpdatePayload = {
+        conversationId,
+        lastMessage: text,
+        lastMessageTimestamp: new Date().toISOString(),
+      };
+
+      // Notify sender's other tabs/windows
+      if (senderId && onlineUsers.has(senderId)) {
+        const sockets = onlineUsers.get(senderId)!;
+        for (const socketId of sockets) {
+          io.to(socketId).emit('conversation_updated', conversationUpdatePayload);
+        }
+      }
+
       if (otherUserId && onlineUsers.has(otherUserId)) {
         const sockets = onlineUsers.get(otherUserId)!;
         for (const socketId of sockets) {
           io.to(socketId).emit('new_message_notification', {
             conversationId, senderName, text
           });
+          io.to(socketId).emit('conversation_updated', conversationUpdatePayload);
         }
       }
     });

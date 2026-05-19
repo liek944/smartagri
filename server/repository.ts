@@ -40,6 +40,7 @@ export interface Repository {
   // Conversations
   listConversationsByUser(userId: string): Promise<any[]>;
   findConversation(participants: string[], productId: string): Promise<any | null>;
+  findConversationByParticipants(participants: string[]): Promise<any | null>;
   createConversation(data: any): Promise<any>;
   updateConversationLastMessage(id: string, message: string): Promise<void>;
 
@@ -50,6 +51,9 @@ export interface Repository {
   // Reviews
   createReview(data: any): Promise<any>;
   listReviewsByProduct(productId: string): Promise<any[]>;
+
+  // User directory
+  listSellers(): Promise<any[]>;
 
   // Lifecycle
   initialize(): Promise<void>;
@@ -155,13 +159,19 @@ export class MongoRepository implements Repository {
   }
 
   async listConversationsByUser(userId: string): Promise<any[]> {
-    return Conversation.find({ participants: userId });
+    return Conversation.find({ participants: userId }).sort({ lastMessageTimestamp: -1 });
   }
 
   async findConversation(participants: string[], productId: string): Promise<any | null> {
     return Conversation.findOne({
       participants: { $all: participants },
       productId,
+    });
+  }
+
+  async findConversationByParticipants(participants: string[]): Promise<any | null> {
+    return Conversation.findOne({
+      participants: { $all: participants },
     });
   }
 
@@ -209,6 +219,10 @@ export class MongoRepository implements Repository {
     }
     
     return review;
+  }
+
+  async listSellers(): Promise<any[]> {
+    return User.find({ role: { $in: ['farmer', 'artisan'] } }).select('-password');
   }
 }
 
@@ -395,9 +409,13 @@ export class JsonFileRepository implements Repository {
   }
 
   async listConversationsByUser(userId: string): Promise<any[]> {
-    return this.db.conversations.filter((c) =>
-      c.participants.includes(userId)
-    );
+    return this.db.conversations
+      .filter((c) => c.participants.includes(userId))
+      .sort((a, b) => {
+        const ta = a.lastMessageTimestamp ? new Date(a.lastMessageTimestamp).getTime() : 0;
+        const tb = b.lastMessageTimestamp ? new Date(b.lastMessageTimestamp).getTime() : 0;
+        return tb - ta;
+      });
   }
 
   async findConversation(
@@ -409,6 +427,18 @@ export class JsonFileRepository implements Repository {
         (c) =>
           c.participants.every((p: string) => participants.includes(p)) &&
           c.productId === productId
+      ) || null
+    );
+  }
+
+  async findConversationByParticipants(
+    participants: string[]
+  ): Promise<any | null> {
+    return (
+      this.db.conversations.find(
+        (c) =>
+          c.participants.every((p: string) => participants.includes(p)) &&
+          participants.every((p: string) => c.participants.includes(p))
       ) || null
     );
   }
@@ -466,6 +496,15 @@ export class JsonFileRepository implements Repository {
     
     await this.save();
     return review;
+  }
+
+  async listSellers(): Promise<any[]> {
+    return this.db.users
+      .filter((u) => u.role === 'farmer' || u.role === 'artisan')
+      .map((u) => {
+        const { password, ...rest } = u;
+        return rest;
+      });
   }
 }
 
