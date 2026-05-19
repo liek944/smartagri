@@ -144,6 +144,34 @@ async function startServer() {
   });
 
   // --- User routes ---
+  app.get('/api/users', async (_req, res) => {
+    try {
+      const users = await container.repo.listUsers();
+      res.json(users.map((u: any) => {
+        const ur = { ...u };
+        delete ur.password;
+        return ur;
+      }));
+    } catch {
+      res.status(500).json({ error: 'Failed to fetch users' });
+    }
+  });
+
+  app.patch('/api/users/:id/status', async (req, res) => {
+    try {
+      const { isActive } = req.body;
+      const updated = await container.repo.updateUserStatus(req.params.id, isActive);
+      if (updated) {
+        delete updated.password;
+        res.json(updated);
+      } else {
+        res.status(404).json({ error: 'User not found' });
+      }
+    } catch {
+      res.status(500).json({ error: 'Failed to update user status' });
+    }
+  });
+
   app.post('/api/users', async (req, res) => {
     try {
       const saved = await container.repo.upsertUser(req.body.id, req.body);
@@ -171,6 +199,14 @@ async function startServer() {
   });
 
   // --- Order routes ---
+  app.get('/api/orders', async (_req, res) => {
+    try {
+      res.json(await container.repo.listAllOrders());
+    } catch {
+      res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+  });
+
   app.get('/api/orders/:userId', async (req, res) => {
     try {
       res.json(await container.repo.listOrdersByUser(req.params.userId));
@@ -198,8 +234,10 @@ async function startServer() {
   });
 
   const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-    pending: ['processing', 'cancelled'],
-    processing: ['completed'],
+    pending: ['confirmed', 'cancelled'],
+    confirmed: ['dispatched'],
+    dispatched: ['out_for_delivery'],
+    out_for_delivery: ['delivered'],
   };
 
   app.patch('/api/orders/:id/status', async (req, res) => {
@@ -270,6 +308,26 @@ async function startServer() {
       res.json(await container.repo.listMessagesByConversation(req.params.conversationId));
     } catch {
       res.status(500).json({ error: 'Failed to fetch messages' });
+    }
+  });
+
+  // --- Review routes ---
+  app.get('/api/reviews/:productId', async (req, res) => {
+    try {
+      res.json(await container.repo.listReviewsByProduct(req.params.productId));
+    } catch {
+      res.status(500).json({ error: 'Failed to fetch reviews' });
+    }
+  });
+
+  app.post('/api/reviews', async (req, res) => {
+    try {
+      res.json(await container.repo.createReview({
+        ...req.body,
+        date: new Date().toISOString()
+      }));
+    } catch {
+      res.status(500).json({ error: 'Failed to create review' });
     }
   });
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import {
-  Search, ShoppingCart, PlusCircle, MessageCircle
+  Search, ShoppingCart, PlusCircle, MessageCircle, Star
 } from 'lucide-react';
 import { User, Product } from '../../types';
 
@@ -108,7 +108,15 @@ export default function MarketplacePage({
                 <button onClick={() => onProductClick(product)} className="text-left">
                   <h3 className="text-xl font-bold text-gray-800 mb-1 hover:text-primary transition-colors">{product.name}</h3>
                 </button>
-                <p className="text-sm text-gray-500 mb-3 truncate">By {product.producer}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-gray-500 truncate">By {product.producer}</p>
+                  {product.rating ? (
+                    <div className="flex items-center gap-1 text-xs font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded-md">
+                      <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                      {product.rating.toFixed(1)}
+                    </div>
+                  ) : null}
+                </div>
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-2xl font-black text-primary">₱{product.price}</span>
                   <span

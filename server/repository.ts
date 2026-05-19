@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import fs from 'fs/promises';
 import path from 'path';
-import { User, Product, Order, Message, Conversation } from './models';
+import { User, Product, Order, Message, Conversation, Review } from './models';
 import { SEED_PRODUCTS } from './seed-data';
 
 // --- Repository interface ---
@@ -20,6 +20,8 @@ export interface Repository {
   findUserById(id: string): Promise<any | null>;
   createUser(data: any): Promise<any>;
   upsertUser(id: string, data: any): Promise<any>;
+  listUsers(): Promise<any[]>;
+  updateUserStatus(id: string, isActive: boolean): Promise<any>;
 
   // Products
   listProducts(): Promise<any[]>;
@@ -30,6 +32,7 @@ export interface Repository {
 
   // Orders
   listOrdersByUser(userId: string): Promise<any[]>;
+  listAllOrders(): Promise<any[]>;
   createOrder(data: any): Promise<any>;
   updateOrderStatus(id: string, status: string): Promise<any>;
   findOrderById(id: string): Promise<any | null>;
@@ -43,6 +46,10 @@ export interface Repository {
   // Messages
   listMessagesByConversation(conversationId: string): Promise<any[]>;
   createMessage(data: any): Promise<any>;
+
+  // Reviews
+  createReview(data: any): Promise<any>;
+  listReviewsByProduct(productId: string): Promise<any[]>;
 
   // Lifecycle
   initialize(): Promise<void>;
@@ -85,6 +92,15 @@ export class MongoRepository implements Repository {
     return user!.toObject();
   }
 
+  async listUsers(): Promise<any[]> {
+    return User.find();
+  }
+
+  async updateUserStatus(id: string, isActive: boolean): Promise<any> {
+    const user = await User.findOneAndUpdate({ id }, { isActive }, { new: true });
+    return user ? user.toObject() : null;
+  }
+
   async listProducts(): Promise<any[]> {
     return Product.find();
   }
@@ -117,6 +133,10 @@ export class MongoRepository implements Repository {
         { 'items.producerId': userId },
       ],
     }).sort({ orderDate: -1 });
+  }
+
+  async listAllOrders(): Promise<any[]> {
+    return Order.find().sort({ orderDate: -1 });
   }
 
   async createOrder(data: any): Promise<any> {
@@ -167,6 +187,29 @@ export class MongoRepository implements Repository {
     await message.save();
     return message;
   }
+
+  async listReviewsByProduct(productId: string): Promise<any[]> {
+    return Review.find({ productId }).sort({ date: -1 });
+  }
+
+  async createReview(data: any): Promise<any> {
+    const review = new Review(data);
+    await review.save();
+    
+    // Update product stats
+    const product = await Product.findById(data.productId);
+    if (product) {
+      const count = product.reviewsCount || 0;
+      const currentRating = product.rating || 0;
+      const newRating = ((currentRating * count) + data.rating) / (count + 1);
+      
+      product.reviewsCount = count + 1;
+      product.rating = newRating;
+      await product.save();
+    }
+    
+    return review;
+  }
 }
 
 // --- JSON file adapter ---
@@ -177,6 +220,7 @@ interface MemoryDB {
   orders: any[];
   conversations: any[];
   messages: any[];
+  reviews: any[];
 }
 
 export class JsonFileRepository implements Repository {
@@ -186,6 +230,7 @@ export class JsonFileRepository implements Repository {
     orders: [],
     conversations: [],
     messages: [],
+    reviews: [],
   };
 
   constructor(private filePath: string) {}
@@ -267,6 +312,20 @@ export class JsonFileRepository implements Repository {
     return { ...data };
   }
 
+  async listUsers(): Promise<any[]> {
+    return this.db.users;
+  }
+
+  async updateUserStatus(id: string, isActive: boolean): Promise<any> {
+    const index = this.db.users.findIndex((u) => u.id === id);
+    if (index !== -1) {
+      this.db.users[index].isActive = isActive;
+      await this.save();
+      return { ...this.db.users[index] };
+    }
+    return null;
+  }
+
   async listProducts(): Promise<any[]> {
     return this.db.products;
   }
@@ -308,6 +367,10 @@ export class JsonFileRepository implements Repository {
         o.userId === userId ||
         o.items.some((i: any) => i.producerId === userId)
     );
+  }
+
+  async listAllOrders(): Promise<any[]> {
+    return [...this.db.orders].sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
   }
 
   async createOrder(data: any): Promise<any> {
@@ -380,6 +443,29 @@ export class JsonFileRepository implements Repository {
     this.db.messages.push(message);
     await this.save();
     return message;
+  }
+
+  async listReviewsByProduct(productId: string): Promise<any[]> {
+    return this.db.reviews
+      .filter((r) => r.productId === productId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+
+  async createReview(data: any): Promise<any> {
+    const review = { ...data, _id: `rev-${Date.now()}` };
+    this.db.reviews.push(review);
+    
+    // Update product stats
+    const product = this.db.products.find((p) => p._id === data.productId || p.id === data.productId);
+    if (product) {
+      const count = product.reviewsCount || 0;
+      const currentRating = product.rating || 0;
+      product.reviewsCount = count + 1;
+      product.rating = ((currentRating * count) + data.rating) / (count + 1);
+    }
+    
+    await this.save();
+    return review;
   }
 }
 

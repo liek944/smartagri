@@ -18,6 +18,7 @@ import MarketplacePage from './components/pages/MarketplacePage';
 import OrdersPage from './components/pages/OrdersPage';
 import DashboardPage from './components/pages/DashboardPage';
 import AuthPage from './components/pages/AuthPage';
+import AdminDashboardPage from './components/pages/AdminDashboardPage';
 
 // Modals
 import CartModal from './components/modals/CartModal';
@@ -32,7 +33,7 @@ import ProductDetailModal from './components/modals/ProductDetailModal';
 import ChatWindow from './components/ChatWindow';
 
 // --- Types ---
-type Section = 'home' | 'orders' | 'dashboard' | 'auth';
+type Section = 'home' | 'orders' | 'dashboard' | 'auth' | 'admin';
 
 // ---------------------------------------------------------------------------
 // App — orchestrator that wires hooks, state, and components together.
@@ -533,6 +534,9 @@ export default function App() {
                 onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
               />
             )}
+            {activeSection === 'admin' && currentUser?.role === 'admin' && (
+              <AdminDashboardPage currentUser={currentUser} onNavigate={navigate} />
+            )}
           </>
         )}
       </main>
@@ -563,6 +567,7 @@ export default function App() {
       <ProductDetailModal
         product={selectedProduct}
         currentUser={currentUser}
+        hasPurchased={orders.some(o => o.items.some(i => i.id === selectedProduct?.id) && o.status === 'delivered')}
         onClose={() => setSelectedProduct(null)}
         onAddToCart={addToCart}
         onBuyNow={buyNow}

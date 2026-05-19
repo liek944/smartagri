@@ -16,6 +16,7 @@ const UserSchema = new mongoose.Schema({
   joinedDate: String,
   deliveryLocation: String,
   phoneNumber: String,
+  isActive: { type: Boolean, default: true },
 });
 
 const ProductSchema = new mongoose.Schema({
@@ -28,6 +29,8 @@ const ProductSchema = new mongoose.Schema({
   producerId: String,
   image: String,
   description: String,
+  rating: { type: Number, default: 0 },
+  reviewsCount: { type: Number, default: 0 },
 });
 
 const OrderSchema = new mongoose.Schema({
@@ -62,8 +65,18 @@ const ConversationSchema = new mongoose.Schema({
   productName: String,
 });
 
+const ReviewSchema = new mongoose.Schema({
+  productId: String,
+  userId: String,
+  userName: String,
+  rating: Number,
+  comment: String,
+  date: String,
+});
+
 export const User = mongoose.model('User', UserSchema);
 export const Product = mongoose.model('Product', ProductSchema);
 export const Order = mongoose.model('Order', OrderSchema);
 export const Message = mongoose.model('Message', MessageSchema);
 export const Conversation = mongoose.model('Conversation', ConversationSchema);
+export const Review = mongoose.model('Review', ReviewSchema);

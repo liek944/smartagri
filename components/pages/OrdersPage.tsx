@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Receipt, Package, Store, ShoppingBag, ChevronRight, XCircle } from 'lucide-react';
+import { Receipt, Package, Store, ShoppingBag, ChevronRight, XCircle, Check, Circle } from 'lucide-react';
 import { Order, User } from '../../types';
 
 interface OrdersPageProps {
@@ -13,16 +13,19 @@ interface OrdersPageProps {
 
 const STATUS_COLORS: Record<Order['status'], string> = {
   pending: 'bg-orange-100 text-orange-700',
-  paid: 'bg-blue-100 text-blue-700',
-  processing: 'bg-purple-100 text-purple-700',
-  completed: 'bg-green-100 text-green-700',
+  confirmed: 'bg-blue-100 text-blue-700',
+  dispatched: 'bg-purple-100 text-purple-700',
+  out_for_delivery: 'bg-indigo-100 text-indigo-700',
+  delivered: 'bg-green-100 text-green-700',
   cancelled: 'bg-red-100 text-red-700',
 };
 
 // Producer's allowed status transitions
 const PRODUCER_TRANSITIONS: Partial<Record<Order['status'], Order['status']>> = {
-  pending: 'processing',
-  processing: 'completed',
+  pending: 'confirmed',
+  confirmed: 'dispatched',
+  dispatched: 'out_for_delivery',
+  out_for_delivery: 'delivered',
 };
 
 export default function OrdersPage({
@@ -161,6 +164,8 @@ export default function OrdersPage({
                   </div>
                 </div>
 
+                <OrderTimeline status={order.status} />
+
                 <div className="space-y-4 mb-6">
                   {displayItems.map((item) => (
                     <div
@@ -245,5 +250,45 @@ export default function OrdersPage({
         </div>
       )}
     </motion.div>
+  );
+}
+
+const TIMELINE_STEPS: Order['status'][] = ['pending', 'confirmed', 'dispatched', 'out_for_delivery', 'delivered'];
+
+function OrderTimeline({ status }: { status: Order['status'] }) {
+  if (status === 'cancelled') {
+    return (
+      <div className="py-4 px-2 bg-red-50 text-red-600 rounded-xl font-bold text-sm mb-6 border border-red-100 text-center">
+        This order has been cancelled.
+      </div>
+    );
+  }
+
+  const currentIndex = TIMELINE_STEPS.indexOf(status);
+
+  return (
+    <div className="mb-8 mt-2 relative px-4">
+      <div className="absolute top-3.5 left-4 right-4 h-1 bg-gray-100 rounded-full" />
+      <div 
+        className="absolute top-3.5 left-4 h-1 bg-primary rounded-full transition-all duration-500" 
+        style={{ width: `calc(${(currentIndex / (TIMELINE_STEPS.length - 1)) * 100}% - ${currentIndex === 0 ? 0 : 0}px)` }} 
+      />
+      <div className="relative flex justify-between">
+        {TIMELINE_STEPS.map((step, idx) => {
+          const isCompleted = idx <= currentIndex;
+          const isCurrent = idx === currentIndex;
+          return (
+            <div key={step} className="flex flex-col items-center w-16">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs z-10 transition-colors duration-500 shadow-sm ${isCompleted ? 'bg-primary text-white' : 'bg-gray-100 text-gray-300'}`}>
+                {isCompleted ? <Check size={14} strokeWidth={3} /> : <Circle size={10} />}
+              </div>
+              <span className={`text-[9px] sm:text-[11px] font-bold mt-2 uppercase text-center leading-tight ${isCurrent ? 'text-primary' : isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>
+                {step.replace(/_/g, '\n')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

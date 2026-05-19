@@ -8,7 +8,7 @@ interface NavbarProps {
   currentUser: User | null;
   activeSection: string;
   cartCount: number;
-  onNavigate: (section: 'home' | 'orders' | 'dashboard' | 'auth') => void;
+  onNavigate: (section: 'home' | 'orders' | 'dashboard' | 'auth' | 'admin') => void;
   onCartOpen: () => void;
   onLogout: () => void;
   onMenuToggle: () => void;
@@ -56,6 +56,14 @@ export default function Navbar({
                 Dashboard
               </button>
             </>
+          )}
+          {currentUser && currentUser.role === 'admin' && (
+            <button
+              onClick={() => onNavigate('admin')}
+              className={`hover:bg-white/10 px-3 py-2 rounded-md transition-colors ${activeSection === 'admin' ? 'bg-white/20 text-yellow-300 font-bold' : 'text-yellow-100'}`}
+            >
+              Admin Area
+            </button>
           )}
           {!currentUser ? (
             <button

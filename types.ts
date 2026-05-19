@@ -1,4 +1,4 @@
-export type UserRole = 'buyer' | 'farmer' | 'artisan';
+export type UserRole = 'buyer' | 'farmer' | 'artisan' | 'admin';
 
 export interface User {
   id: string;
@@ -10,6 +10,7 @@ export interface User {
   joinedDate: string;
   deliveryLocation?: string;
   phoneNumber?: string;
+  isActive?: boolean;
 }
 
 export interface Product {
@@ -25,6 +26,19 @@ export interface Product {
   image: string;
   description: string;
   pricePerKg?: number;
+  rating?: number;
+  reviewsCount?: number;
+}
+
+export interface Review {
+  id: string;
+  _id?: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  date: string;
 }
 
 export interface CartItem extends Product {
@@ -41,7 +55,7 @@ export interface Order {
   deliveryFee: number;
   total: number;
   paymentMethod: 'gcash' | 'credit' | 'cod';
-  status: 'pending' | 'paid' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'dispatched' | 'out_for_delivery' | 'delivered' | 'cancelled';
   orderDate: string;
   deliveryLocation?: string;
   phoneNumber?: string;

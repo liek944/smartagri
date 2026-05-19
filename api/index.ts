@@ -3,7 +3,7 @@
  * Owns URL construction, _id normalization, error handling, and response typing.
  */
 
-import { Product, Order, User, UserRole, Conversation, ChatMessage } from '../types';
+import { Product, Order, User, UserRole, Conversation, ChatMessage, Review } from '../types';
 
 // --- Error type ---
 
@@ -90,8 +90,17 @@ export const api = {
   },
 
   users: {
+    list: (): Promise<User[]> =>
+      request<User[]>('/users'),
+
     get: (id: string): Promise<User> =>
       request<User>(`/users/${id}`),
+
+    updateStatus: (id: string, isActive: boolean): Promise<User> =>
+      request<User>(`/users/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isActive }),
+      }),
 
     save: (user: User): Promise<User> =>
       request<User>('/users', {
@@ -101,6 +110,9 @@ export const api = {
   },
 
   orders: {
+    listAll: (): Promise<Order[]> =>
+      request<any[]>('/orders').then(normalizeIds),
+
     list: (userId: string): Promise<Order[]> =>
       request<any[]>(`/orders/${userId}`).then(normalizeIds),
 
@@ -136,5 +148,16 @@ export const api = {
   messages: {
     list: (conversationId: string): Promise<ChatMessage[]> =>
       request<ChatMessage[]>(`/messages/${conversationId}`),
+  },
+
+  reviews: {
+    list: (productId: string): Promise<Review[]> =>
+      request<any[]>(`/reviews/${productId}`).then(normalizeIds),
+
+    create: (data: Omit<Review, 'id' | 'date'>): Promise<Review> =>
+      request<any>('/reviews', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }).then(normalizeId),
   },
 };
