@@ -68,6 +68,7 @@ export interface ChatMessage {
   senderName: string;
   text: string;
   audio?: string;
+  image?: string;
   timestamp: string;
 }
 

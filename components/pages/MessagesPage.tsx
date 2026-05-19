@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
 import {
   MessageSquare, Search, Send, Mic, Volume2, CheckCircle, AlertCircle,
-  X, Users, ArrowLeft, ChevronRight
+  X, Users, ArrowLeft, ChevronRight, Image as ImageIcon
 } from 'lucide-react';
 import { User, Conversation, ChatMessage } from '../../types';
 import { api } from '../../api';
@@ -70,7 +70,9 @@ export default function MessagesPage({
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [loadingSellers, setLoadingSellers] = useState(false);
-
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+ 
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatSocketRef = useRef<Socket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -78,6 +80,26 @@ export default function MessagesPage({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const mimeTypeRef = useRef<string>('');
   const activeConvRef = useRef<Conversation | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5_000_000) {
+      setRecordingError('Image is too large — please select an image under 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result as string);
+    };
+    reader.onerror = () => {
+      setRecordingError('Failed to read image. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
 
@@ -169,14 +191,20 @@ export default function MessagesPage({
   // Send text message
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !chatSocketRef.current || !activeConv) return;
+    if ((!newMessage.trim() && !selectedImage) || !chatSocketRef.current || !activeConv) return;
     const convId = activeConv._id || activeConv.id;
     const otherUid = Object.keys(activeConv.participantNames).find(uid => uid !== currentUser.id);
+    
+    const imageToSend = selectedImage;
+    setSelectedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
     chatSocketRef.current.emit('send_message', {
       conversationId: convId,
       senderId: currentUser.id,
       senderName: currentUser.fullName,
       text: newMessage.trim(),
+      image: imageToSend || undefined,
       otherUserId: otherUid,
     });
     setNewMessage('');
@@ -478,7 +506,19 @@ export default function MessagesPage({
                         </div>
                         <AudioPlayer src={msg.audio} />
                       </div>
-                    ) : msg.text}
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {msg.image && (
+                          <img 
+                            src={msg.image} 
+                            alt="Message attachment" 
+                            className="max-h-48 rounded-xl object-cover cursor-zoom-in hover:opacity-90 transition-opacity shadow-sm max-w-full"
+                            onClick={() => setLightboxImage(msg.image || null)}
+                          />
+                        )}
+                        {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -486,9 +526,31 @@ export default function MessagesPage({
             <div ref={scrollRef} />
           </div>
 
+          {/* Selected Image Preview Panel */}
+          {selectedImage && (
+            <div className="mx-3 mb-2 px-3 py-2 bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-xl flex items-center gap-3 relative shrink-0">
+              <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm shrink-0">
+                <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedImage(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black/80 transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+              <div className="text-[11px] text-gray-500 font-medium truncate flex-grow">
+                Ready to send image...
+              </div>
+            </div>
+          )}
+
           {/* Recording error */}
           {recordingError && (
-            <div className="mx-3 mb-1 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2">
+            <div className="mx-3 mb-1 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl px-3 py-2 shrink-0">
               <AlertCircle size={13} className="mt-0.5 shrink-0" />
               <span className="leading-snug">{recordingError}</span>
               <button onClick={() => setRecordingError(null)} className="ml-auto shrink-0 opacity-60 hover:opacity-100">✕</button>
@@ -496,7 +558,14 @@ export default function MessagesPage({
           )}
 
           {/* Input */}
-          <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-50 flex gap-2 items-center">
+          <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-gray-50 flex gap-2 items-center shrink-0">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleImageChange} 
+              accept="image/*" 
+              className="hidden" 
+            />
             {isRecording ? (
               <div className="flex-grow flex items-center gap-3 bg-red-50 px-4 py-2 rounded-full animate-pulse">
                 <div className="w-2 h-2 bg-red-500 rounded-full" />
@@ -507,6 +576,9 @@ export default function MessagesPage({
               </div>
             ) : (
               <>
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Send Image">
+                  <ImageIcon size={20} />
+                </button>
                 <button type="button" onClick={startRecording} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Record Voice Message">
                   <Mic size={20} />
                 </button>
@@ -517,12 +589,32 @@ export default function MessagesPage({
                     className="w-full px-4 py-2.5 bg-[#F0F2F5] border-none rounded-full focus:ring-0 text-sm"
                   />
                 </div>
-                <button type="submit" disabled={!newMessage.trim()} className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors disabled:text-gray-300">
-                  <Send size={20} fill={newMessage.trim() ? 'currentColor' : 'none'} />
+                <button type="submit" disabled={!newMessage.trim() && !selectedImage} className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors disabled:text-gray-300">
+                  <Send size={20} fill={(newMessage.trim() || selectedImage) ? 'currentColor' : 'none'} />
                 </button>
               </>
             )}
           </form>
+
+          {/* Enlarged Image Lightbox */}
+          {lightboxImage && (
+            <div 
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-4 backdrop-blur-sm transition-all"
+              onClick={() => setLightboxImage(null)}
+            >
+              <button 
+                onClick={() => setLightboxImage(null)}
+                className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <img 
+                src={lightboxImage} 
+                alt="Enlarged Message attachment" 
+                className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl shadow-2xl transition-transform" 
+              />
+            </div>
+          )}
         </div>
       )}
     </motion.div>

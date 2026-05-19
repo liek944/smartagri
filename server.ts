@@ -592,18 +592,18 @@ async function startServer() {
     });
 
     socket.on('send_message', async (data) => {
-      const { conversationId, senderId, senderName, text, audio, otherUserId } = data;
+      const { conversationId, senderId, senderName, text, audio, image, otherUserId } = data;
       const message = await container.repo.createMessage({
-        conversationId, senderId, senderName, text, audio,
+        conversationId, senderId, senderName, text, audio, image,
         timestamp: new Date(),
       });
-      await container.repo.updateConversationLastMessage(conversationId, text);
+      await container.repo.updateConversationLastMessage(conversationId, text || (image ? '📷 Image' : ''));
       io.to(conversationId).emit('new_message', message);
 
       // Emit conversation_updated to both participants for real-time inbox reordering
       const conversationUpdatePayload = {
         conversationId,
-        lastMessage: text,
+        lastMessage: text || (image ? '📷 Image' : ''),
         lastMessageTimestamp: new Date().toISOString(),
       };
 
@@ -619,7 +619,7 @@ async function startServer() {
         const sockets = onlineUsers.get(otherUserId)!;
         for (const socketId of sockets) {
           io.to(socketId).emit('new_message_notification', {
-            conversationId, senderName, text
+            conversationId, senderName, text: text || (image ? '📷 Image' : '')
           });
           io.to(socketId).emit('conversation_updated', conversationUpdatePayload);
         }

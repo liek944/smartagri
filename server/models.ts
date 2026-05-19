@@ -53,6 +53,7 @@ const MessageSchema = new mongoose.Schema({
   senderName: String,
   text: String,
   audio: String,
+  image: String,
   timestamp: { type: Date, default: Date.now },
 });
 

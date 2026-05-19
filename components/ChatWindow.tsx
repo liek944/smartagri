@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, X, Mic, Volume2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Send, X, Mic, Volume2, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { Conversation, ChatMessage, User } from '../types';
 
 /**
@@ -89,12 +89,35 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingError, setRecordingError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const mimeTypeRef = useRef<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5_000_000) {
+      setRecordingError('Image is too large — please select an image under 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImage(reader.result as string);
+    };
+    reader.onerror = () => {
+      setRecordingError('Failed to read image. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const startRecording = async () => {
     setRecordingError(null);
@@ -246,16 +269,20 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !socketRef.current) return;
+    if ((!newMessage.trim() && !selectedImage) || !socketRef.current) return;
 
     const msgText = newMessage.trim();
     setNewMessage('');
+    const imageToSend = selectedImage;
+    setSelectedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
 
     socketRef.current.emit('send_message', {
       conversationId: conversation.id,
       senderId: currentUser.id,
       senderName: currentUser.fullName,
       text: msgText,
+      image: imageToSend || undefined,
       otherUserId: Object.keys(conversation.participantNames).find(uid => uid !== currentUser?.id)
     });
   };
@@ -322,7 +349,17 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
                     <AudioPlayer src={msg.audio} />
                   </div>
                 ) : (
-                  msg.text
+                  <div className="flex flex-col gap-2">
+                    {msg.image && (
+                      <img 
+                        src={msg.image} 
+                        alt="Message attachment" 
+                        className="max-h-48 rounded-xl object-cover cursor-zoom-in hover:opacity-90 transition-opacity shadow-sm max-w-full"
+                        onClick={() => setLightboxImage(msg.image || null)}
+                      />
+                    )}
+                    {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
+                  </div>
                 )}
               </div>
             </div>
@@ -330,6 +367,28 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
         })}
         <div ref={scrollRef} />
       </div>
+
+      {/* Selected Image Preview Panel */}
+      {selectedImage && (
+        <div className="mx-3 mb-2 px-3 py-2 bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-xl flex items-center gap-3 relative">
+          <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shadow-sm shrink-0">
+            <img src={selectedImage} alt="Preview" className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedImage(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+              className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black/80 transition-colors"
+            >
+              <X size={10} />
+            </button>
+          </div>
+          <div className="text-[11px] text-gray-500 font-medium truncate flex-grow">
+            Ready to send image...
+          </div>
+        </div>
+      )}
 
       {/* Recording error banner */}
       {recordingError && (
@@ -341,6 +400,13 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       )}
 
       <form onSubmit={handleSendMessage} className="p-3 bg-white flex gap-2 items-center">
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleImageChange} 
+          accept="image/*" 
+          className="hidden" 
+        />
         {isRecording ? (
           <div className="flex-grow flex items-center gap-3 bg-red-50 px-4 py-2 rounded-full animate-pulse">
             <div className="w-2 h-2 bg-red-500 rounded-full"></div>
@@ -355,6 +421,14 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
           </div>
         ) : (
           <>
+            <button 
+              type="button" 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10"
+              title="Send Image"
+            >
+              <ImageIcon size={20} />
+            </button>
             <button 
               type="button" 
               onClick={startRecording}
@@ -374,14 +448,34 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
             </div>
             <button 
               type="submit" 
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() && !selectedImage}
               className="p-2 text-primary hover:bg-primary/10 rounded-full transition-colors disabled:text-gray-300"
             >
-              <Send size={20} fill={newMessage.trim() ? "currentColor" : "none"} />
+              <Send size={20} fill={(newMessage.trim() || selectedImage) ? "currentColor" : "none"} />
             </button>
           </>
         )}
       </form>
+
+      {/* Enlarged Image Lightbox */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[2000] p-4 backdrop-blur-sm transition-all"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button 
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={lightboxImage} 
+            alt="Enlarged Message attachment" 
+            className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl shadow-2xl transition-transform" 
+          />
+        </div>
+      )}
     </div>
   );
 }
