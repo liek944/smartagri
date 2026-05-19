@@ -290,13 +290,7 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
 
       {/* Messages - Messenger Style */}
       <div className="flex-grow overflow-y-auto p-4 space-y-2 bg-white">
-        {conversation.productName && (
-          <div className="text-center mb-6 pt-2">
-            <div className="inline-block px-3 py-1 bg-gray-50 rounded-full text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-              Re: {conversation.productName}
-            </div>
-          </div>
-        )}
+
         
         {messages.map((msg, idx) => {
           const isMe = msg.senderId === currentUser?.id;

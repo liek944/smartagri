@@ -279,7 +279,7 @@ async function startServer() {
     try {
       const { participants, participantNames, productId, productName } = req.body;
 
-      let conversation = await container.repo.findConversation(participants, productId);
+      let conversation = await container.repo.findConversationByParticipants(participants);
       if (!conversation) {
         conversation = await container.repo.createConversation({
           participants, participantNames, productId, productName,

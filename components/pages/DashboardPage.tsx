@@ -210,11 +210,7 @@ export default function DashboardPage({
                         {conv.lastMessage || 'No messages yet'}
                       </p>
                     </div>
-                    {conv.productName && (
-                      <span className="text-[10px] bg-white px-2 py-1 rounded-full font-bold text-primary">
-                        Re: {conv.productName}
-                      </span>
-                    )}
+
                   </button>
                 ))}
               </div>
