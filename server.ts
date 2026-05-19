@@ -292,7 +292,7 @@ async function startServer() {
           conversationId: conversation._id,
           senderId: participants[1],
           senderName: participantNames[participants[1]] || 'Seller',
-          text: `Hi! Thanks for checking out my ${productName}. Do you have any questions?`,
+          text: `Hi! Thanks for checking out my Products. Do you have any questions?`,
           timestamp: new Date(),
         });
       }
