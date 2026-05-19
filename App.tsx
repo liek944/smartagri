@@ -639,6 +639,7 @@ export default function App() {
                 conversations={conversations}
                 onConversationsChange={setConversations}
                 socketRef={socketRef}
+                products={products}
               />
             )}
           </>

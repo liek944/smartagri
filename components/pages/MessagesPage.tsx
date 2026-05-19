@@ -5,8 +5,9 @@ import {
   MessageSquare, Search, Send, Mic, Volume2, CheckCircle, AlertCircle,
   X, Users, ArrowLeft, ChevronRight, Image as ImageIcon, Camera, RotateCw
 } from 'lucide-react';
-import { User, Conversation, ChatMessage } from '../../types';
+import { User, Conversation, ChatMessage, Product } from '../../types';
 import { api } from '../../api';
+import SellerProfileModal from '../modals/SellerProfileModal';
 
 // --- Audio helpers (reused from ChatWindow) ---
 
@@ -49,6 +50,7 @@ interface MessagesPageProps {
   conversations: Conversation[];
   onConversationsChange: (convs: Conversation[]) => void;
   socketRef: React.MutableRefObject<Socket | null>;
+  products?: Product[];
 }
 
 type View = 'inbox' | 'directory' | 'chat';
@@ -56,7 +58,7 @@ type View = 'inbox' | 'directory' | 'chat';
 // --- Component ---
 
 export default function MessagesPage({
-  currentUser, conversations, onConversationsChange, socketRef,
+  currentUser, conversations, onConversationsChange, socketRef, products = [],
 }: MessagesPageProps) {
   const [view, setView] = useState<View>('inbox');
   const [sellers, setSellers] = useState<User[]>([]);
@@ -72,6 +74,8 @@ export default function MessagesPage({
   const [loadingSellers, setLoadingSellers] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [selectedSellerForProfile, setSelectedSellerForProfile] = useState<User | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -513,31 +517,58 @@ export default function MessagesPage({
             ) : (
               <div>
                 {filteredSellers.map(seller => (
-                  <button
+                  <div
                     key={seller.id}
-                    onClick={() => openConversationWith(seller)}
-                    className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 group"
+                    className="w-full px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors group"
                   >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg shrink-0 ${
-                      seller.role === 'farmer'
-                        ? 'bg-gradient-to-br from-green-100 to-green-50 text-green-700'
-                        : 'bg-gradient-to-br from-purple-100 to-purple-50 text-purple-700'
-                    }`}>
-                      {seller.fullName[0]}
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <span className="font-bold text-gray-800 truncate block">{seller.fullName}</span>
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${
-                        seller.role === 'farmer' ? 'text-green-600' : 'text-purple-600'
+                    {/* Left: Avatar + Name (Clickable to view profile) */}
+                    <button
+                      onClick={() => {
+                        setSelectedSellerForProfile(seller);
+                        setIsProfileModalOpen(true);
+                      }}
+                      className="flex items-center gap-4 text-left flex-grow focus:outline-none group/avatar"
+                      title="View Profile"
+                    >
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg shrink-0 transition-transform group-hover/avatar:scale-105 shadow-sm ${
+                        seller.role === 'farmer'
+                          ? 'bg-gradient-to-br from-green-100 to-green-50 text-green-700'
+                          : 'bg-gradient-to-br from-purple-100 to-purple-50 text-purple-700'
                       }`}>
-                        {seller.role === 'artisan' ? 'Craft Producer' : 'Farmer'}
-                      </span>
+                        {seller.fullName[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-gray-800 truncate block group-hover/avatar:text-primary transition-colors">
+                          {seller.fullName}
+                        </span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest block ${
+                          seller.role === 'farmer' ? 'text-green-600' : 'text-purple-600'
+                        }`}>
+                          {seller.role === 'artisan' ? 'Craft Producer' : 'Farmer'}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                      <button
+                        onClick={() => {
+                          setSelectedSellerForProfile(seller);
+                          setIsProfileModalOpen(true);
+                        }}
+                        className="px-4 py-2 border border-primary/20 text-primary hover:bg-primary/5 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => openConversationWith(seller)}
+                        className="px-4 py-2 bg-primary text-white hover:bg-primary/95 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-primary/10 hover:scale-[1.02] active:scale-95"
+                      >
+                        <MessageSquare size={13} />
+                        Message
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">Message</span>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-primary transition-colors" />
-                    </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -781,6 +812,21 @@ export default function MessagesPage({
             </div>
           )}
         </div>
+      )}
+
+      {/* Seller Profile Modal */}
+      {selectedSellerForProfile && (
+        <SellerProfileModal
+          isOpen={isProfileModalOpen}
+          seller={selectedSellerForProfile}
+          products={products}
+          currentUser={currentUser}
+          onClose={() => {
+            setIsProfileModalOpen(false);
+            setSelectedSellerForProfile(null);
+          }}
+          onStartChat={openConversationWith}
+        />
       )}
     </motion.div>
   );
