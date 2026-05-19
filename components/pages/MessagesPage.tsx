@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { io, Socket } from 'socket.io-client';
 import {
   MessageSquare, Search, Send, Mic, Volume2, CheckCircle, AlertCircle,
-  X, Users, ArrowLeft, ChevronRight, Image as ImageIcon
+  X, Users, ArrowLeft, ChevronRight, Image as ImageIcon, Camera
 } from 'lucide-react';
 import { User, Conversation, ChatMessage } from '../../types';
 import { api } from '../../api';
@@ -72,6 +72,79 @@ export default function MessagesPage({
   const [loadingSellers, setLoadingSellers] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    setIsCameraActive(true);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported on this browser or environment.');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false
+      });
+      setCameraStream(stream);
+      cameraStreamRef.current = stream;
+      
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera access denied. Please allow camera permissions in your settings.');
+      } else {
+        setCameraError('Could not access camera. Make sure it is not in use by another app.');
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
+    }
+    setCameraStream(null);
+    setIsCameraActive(false);
+    setCameraError(null);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setSelectedImage(dataUrl);
+        stopCamera();
+      }
+    }
+  };
  
   const scrollRef = useRef<HTMLDivElement>(null);
   const chatSocketRef = useRef<Socket | null>(null);
@@ -457,7 +530,7 @@ export default function MessagesPage({
 
       {/* Chat View */}
       {view === 'chat' && activeConv && (
-        <div className="flex-grow bg-white rounded-3xl shadow-sm border border-gray-50 flex flex-col overflow-hidden">
+        <div className="flex-grow bg-white rounded-3xl shadow-sm border border-gray-50 flex flex-col overflow-hidden relative">
           {/* Chat header bar */}
           <div className="px-5 py-3 border-b border-gray-50 flex items-center gap-3 bg-white">
             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
@@ -579,6 +652,9 @@ export default function MessagesPage({
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Send Image">
                   <ImageIcon size={20} />
                 </button>
+                <button type="button" onClick={startCamera} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Take Photo">
+                  <Camera size={20} />
+                </button>
                 <button type="button" onClick={startRecording} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Record Voice Message">
                   <Mic size={20} />
                 </button>
@@ -613,6 +689,69 @@ export default function MessagesPage({
                 alt="Enlarged Message attachment" 
                 className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl shadow-2xl transition-transform" 
               />
+            </div>
+          )}
+
+          {/* Camera Overlay */}
+          {isCameraActive && (
+            <div className="absolute top-[65px] inset-x-0 bottom-0 bg-neutral-950 flex flex-col z-50 text-white transition-opacity duration-200">
+              {/* Camera Header */}
+              <div className="p-3 flex justify-between items-center bg-black/40 backdrop-blur-md border-b border-white/5 shrink-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Camera Preview</span>
+                <button 
+                  type="button" 
+                  onClick={stopCamera} 
+                  className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-neutral-300"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Video / Preview Area */}
+              <div className="flex-grow flex items-center justify-center relative p-4 bg-neutral-900 overflow-hidden">
+                {cameraError ? (
+                  <div className="text-center p-5 bg-red-950/40 border border-red-900/30 rounded-2xl max-w-[280px] backdrop-blur-md">
+                    <AlertCircle className="mx-auto mb-2.5 text-red-500" size={28} />
+                    <p className="text-[11px] font-semibold leading-normal text-red-200">{cameraError}</p>
+                    <button 
+                      type="button"
+                      onClick={startCamera} 
+                      className="mt-3.5 px-3 py-1.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shadow-md shadow-red-900/30"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                ) : !cameraStream ? (
+                  <div className="text-center">
+                    <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                    <p className="text-[10px] text-neutral-400 font-medium">Accessing camera...</p>
+                  </div>
+                ) : (
+                  <div className="relative w-full max-w-[400px] aspect-[4/3] rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-black flex items-center justify-center">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover transform -scale-x-100"
+                    />
+                    <div className="absolute inset-0 border border-white/10 pointer-events-none rounded-xl" />
+                  </div>
+                )}
+              </div>
+
+              {/* Capture Controls */}
+              {cameraStream && !cameraError && (
+                <div className="p-4 bg-black/40 backdrop-blur-md flex justify-center items-center border-t border-white/5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="w-14 h-14 rounded-full border-4 border-white flex items-center justify-center bg-transparent hover:bg-white/20 active:scale-95 transition-all shadow-lg relative group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-white transition-transform group-hover:scale-90" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
