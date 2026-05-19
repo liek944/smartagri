@@ -71,6 +71,8 @@ export default function App() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'gcash' | 'credit' | 'cod'>('cod');
   const [phoneError, setPhoneError] = useState('');
   const [deliveryError, setDeliveryError] = useState('');
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [paymentToast, setPaymentToast] = useState<{ type: 'success' | 'failed' | 'expired'; message: string } | null>(null);
 
   // ---- Orders ----
   const [orders, setOrders] = useState<Order[]>([]);
@@ -124,6 +126,55 @@ export default function App() {
     api.orders.list(currentUser.id).then(setOrders).catch(() => setOrders([]));
     api.conversations.list(currentUser.id).then(setConversations).catch(() => setConversations([]));
   }, [currentUser, activeSection]);
+
+  // Handle return from PayMongo GCash redirect
+  useEffect(() => {
+    if (loading) return; // Wait until auth is resolved from localStorage
+
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+    const orderId = params.get('order_id');
+
+    if (!paymentStatus) return;
+
+    // Clean URL without reload
+    window.history.replaceState({}, '', '/');
+
+    if (paymentStatus === 'success' && orderId) {
+      // Fetch the newly created order and show receipt
+      const fetchOrder = async () => {
+        try {
+          // Re-fetch orders to get the new one
+          if (currentUser) {
+            const allOrders = await api.orders.list(currentUser.id);
+            setOrders(allOrders);
+            const newOrder = allOrders.find((o: Order) => o.id === orderId || o._id === orderId);
+            if (newOrder) {
+              setLastOrder(newOrder);
+              setIsReceiptOpen(true);
+            }
+          }
+          fetchProducts(); // refresh stock
+          setCart([]); // clear cart
+          setPaymentToast({ type: 'success', message: 'GCash payment successful! Your order has been placed.' });
+        } catch (err) {
+          console.error('Error fetching order after payment:', err);
+        }
+      };
+      fetchOrder();
+    } else if (paymentStatus === 'failed') {
+      setPaymentToast({ type: 'failed', message: 'GCash payment was cancelled or failed. Your cart items are still saved.' });
+    } else if (paymentStatus === 'expired') {
+      setPaymentToast({ type: 'expired', message: 'Payment session expired. Please try again.' });
+    }
+  }, [currentUser, loading]); // runs once currentUser is available after redirect return
+
+  // Auto-dismiss payment toast
+  useEffect(() => {
+    if (!paymentToast) return;
+    const timer = setTimeout(() => setPaymentToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [paymentToast]);
 
   // Handle global socket connection for notifications
   useEffect(() => {
@@ -263,6 +314,50 @@ export default function App() {
     if (phErr) { setPhoneError(phErr); hasError = true; }
     if (hasError) return;
 
+    // ------ GCash via PayMongo ------
+    if (selectedPaymentMethod === 'gcash') {
+      setIsPaymentProcessing(true);
+      try {
+        const { checkoutUrl } = await api.payments.createGcashSource({
+          userId: currentUser.id,
+          userName: currentUser.fullName,
+          items: cart.map((i) => ({ ...i, id: i.id })),
+          subtotal: cartSubtotal,
+          deliveryFee: 50,
+          total: cartTotal,
+          deliveryLocation: `${deliveryLocation}, Roxas, Or. Mindoro`,
+          phoneNumber,
+        });
+
+        // Persist delivery details before redirecting
+        if (
+          deliveryLocation !== currentUser.deliveryLocation ||
+          phoneNumber !== currentUser.phoneNumber
+        ) {
+          try {
+            const updatedUser = await api.users.save({
+              ...currentUser,
+              deliveryLocation,
+              phoneNumber,
+            });
+            setCurrentUser(updatedUser);
+            localStorage.setItem('sac_user', JSON.stringify(updatedUser));
+          } catch (err) {
+            console.warn('Could not persist delivery details:', err);
+          }
+        }
+
+        // Redirect to PayMongo GCash checkout
+        window.location.href = checkoutUrl;
+      } catch (error: any) {
+        console.error('GCash payment error:', error);
+        setIsPaymentProcessing(false);
+        alert(error.message || 'Failed to initiate GCash payment. Please try again.');
+      }
+      return;
+    }
+
+    // ------ COD (existing flow) ------
     try {
       const data = await api.orders.create({
         userId: currentUser.id, userName: currentUser.fullName,
@@ -557,6 +652,7 @@ export default function App() {
         onDeliveryChange={handleDeliveryChange} onPhoneChange={handlePhoneChange}
         onPhonePaste={handlePhonePaste}
         onPaymentMethodChange={setSelectedPaymentMethod} onConfirm={handleCheckout}
+        isProcessing={isPaymentProcessing}
       />
       <RolePickerModal isOpen={isRolePickerOpen} onPickRole={handlePickRole} />
       <ReceiptModal
@@ -594,6 +690,21 @@ export default function App() {
       {/* Chat */}
       {activeConversation && currentUser && (
         <ChatWindow conversation={activeConversation} currentUser={currentUser} onClose={() => setActiveConversation(null)} />
+      )}
+
+      {/* Payment toast notification */}
+      {paymentToast && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[500] max-w-md w-full mx-4 p-4 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-3 animate-[slideDown_0.3s_ease-out] ${
+          paymentToast.type === 'success'
+            ? 'bg-green-500 text-white'
+            : paymentToast.type === 'failed'
+              ? 'bg-red-500 text-white'
+              : 'bg-yellow-500 text-white'
+        }`}>
+          <span className="text-lg">{paymentToast.type === 'success' ? '✅' : paymentToast.type === 'failed' ? '❌' : '⏳'}</span>
+          <span className="flex-grow">{paymentToast.message}</span>
+          <button onClick={() => setPaymentToast(null)} className="text-white/80 hover:text-white font-black">✕</button>
+        </div>
       )}
     </div>
   );

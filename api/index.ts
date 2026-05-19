@@ -160,4 +160,24 @@ export const api = {
         body: JSON.stringify(data),
       }).then(normalizeId),
   },
+
+  payments: {
+    createGcashSource: (data: {
+      userId: string;
+      userName: string;
+      items: any[];
+      subtotal: number;
+      deliveryFee: number;
+      total: number;
+      deliveryLocation: string;
+      phoneNumber: string;
+    }): Promise<{ checkoutUrl: string; paymentId: string; sourceId: string }> =>
+      request<{ checkoutUrl: string; paymentId: string; sourceId: string }>('/payments/gcash', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    checkStatus: (paymentId: string): Promise<{ status: string }> =>
+      request<{ status: string }>(`/payments/status/${paymentId}`),
+  },
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Smartphone, Truck } from 'lucide-react';
+import { Smartphone, Truck, Loader2 } from 'lucide-react';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface CheckoutModalProps {
   selectedPaymentMethod: 'gcash' | 'credit' | 'cod';
   phoneError: string;
   deliveryError: string;
+  isProcessing?: boolean;
   onClose: () => void;
   onDeliveryChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onPhoneChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -23,7 +24,7 @@ interface CheckoutModalProps {
 export default function CheckoutModal({
   isOpen, cartCount, cartSubtotal, cartTotal,
   deliveryLocation, phoneNumber, selectedPaymentMethod,
-  phoneError, deliveryError,
+  phoneError, deliveryError, isProcessing,
   onClose, onDeliveryChange, onPhoneChange, onPhonePaste,
   onPaymentMethodChange, onConfirm,
 }: CheckoutModalProps) {
@@ -44,6 +45,27 @@ export default function CheckoutModal({
             onClick={(e) => e.stopPropagation()}
             className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl relative flex flex-col max-h-[90vh]"
           >
+            {/* Processing overlay */}
+            <AnimatePresence>
+              {isProcessing && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-10 bg-white/90 backdrop-blur-sm rounded-[40px] flex flex-col items-center justify-center gap-4"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                  >
+                    <Loader2 size={40} className="text-blue-500" />
+                  </motion.div>
+                  <p className="text-lg font-black text-gray-700">Connecting to GCash...</p>
+                  <p className="text-xs text-gray-400 font-medium">You'll be redirected to authorize payment</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="p-4 sm:p-8 pb-0 sm:pb-0">
               <h2 className="text-3xl font-black text-primary mb-2 text-center">Complete Your Order</h2>
               <p className="text-center text-gray-500 mb-4 font-medium italic">Support local, stay digital.</p>
@@ -201,16 +223,16 @@ export default function CheckoutModal({
                       exit={{ opacity: 0, y: -10 }}
                       className="p-4 bg-blue-50 rounded-2xl border border-blue-100 space-y-2"
                     >
-                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">GCash Instructions</p>
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">GCash via PayMongo</p>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs">P0V</div>
+                        <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs">G</div>
                         <div className="flex-grow">
-                          <p className="text-sm font-bold text-blue-900 leading-tight">Pay to: 0912-345-6789</p>
-                          <p className="text-[10px] text-blue-500 font-bold uppercase">Account Name: ROXAS_MARKET_ADMIN</p>
+                          <p className="text-sm font-bold text-blue-900 leading-tight">Secure GCash Payment</p>
+                          <p className="text-[10px] text-blue-500 font-bold uppercase">Powered by PayMongo (Test Mode)</p>
                         </div>
                       </div>
                       <p className="text-[9px] text-blue-400 font-bold italic leading-tight">
-                        Please take a screenshot of your receipt. Our rider will verify it upon arrival or via chat.
+                        You'll be redirected to PayMongo to authorize your GCash payment. No real money will be charged in test mode.
                       </p>
                     </motion.div>
                   )}
@@ -240,9 +262,21 @@ export default function CheckoutModal({
                 <div className="pt-4">
                   <button
                     onClick={onConfirm}
-                    className="w-full py-4 bg-primary text-white rounded-2xl font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest"
+                    disabled={isProcessing}
+                    className={`w-full py-4 rounded-2xl font-black shadow-xl transition-all uppercase tracking-widest ${
+                      isProcessing
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : selectedPaymentMethod === 'gcash'
+                          ? 'bg-blue-600 text-white hover:scale-[1.02] active:scale-95'
+                          : 'bg-primary text-white hover:scale-[1.02] active:scale-95'
+                    }`}
                   >
-                    Confirm Purchase
+                    {isProcessing
+                      ? 'Processing...'
+                      : selectedPaymentMethod === 'gcash'
+                        ? 'Pay with GCash'
+                        : 'Confirm Purchase'
+                    }
                   </button>
                 </div>
               </div>

@@ -331,6 +331,208 @@ async function startServer() {
     }
   });
 
+  // --- PayMongo GCash Payment routes ---
+  const PAYMONGO_API = 'https://api.paymongo.com/v1';
+  const PAYMONGO_AUTH = `Basic ${Buffer.from((process.env.PAYMONGO_SECRET_KEY || '') + ':').toString('base64')}`;
+
+  // In-memory store for pending GCash payments (maps our paymentId → order data + sourceId)
+  const pendingPayments = new Map<string, any>();
+
+  // Cleanup stale entries older than 1 hour
+  setInterval(() => {
+    const ONE_HOUR = 60 * 60 * 1000;
+    for (const [key, val] of pendingPayments) {
+      if (Date.now() - val.createdAt > ONE_HOUR) pendingPayments.delete(key);
+    }
+  }, 5 * 60 * 1000);
+
+  // Step 1: Create a GCash source — frontend calls this, gets redirected to PayMongo
+  app.post('/api/payments/gcash', async (req, res) => {
+    try {
+      const { userId, userName, items, subtotal, deliveryFee, total, deliveryLocation, phoneNumber } = req.body;
+      const paymentId = `PAY-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      // Determine base URL from request (works in dev and production)
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const baseUrl = `${proto}://${host}`;
+
+      // Create PayMongo source
+      const sourceRes = await fetch(`${PAYMONGO_API}/sources`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': PAYMONGO_AUTH,
+        },
+        body: JSON.stringify({
+          data: {
+            attributes: {
+              amount: Math.round(total * 100), // PayMongo uses centavos
+              redirect: {
+                success: `${baseUrl}/api/payments/gcash/success?payment_id=${paymentId}`,
+                failed: `${baseUrl}/api/payments/gcash/failed?payment_id=${paymentId}`,
+              },
+              type: 'gcash',
+              currency: 'PHP',
+            },
+          },
+        }),
+      });
+
+      const sourceData = await sourceRes.json();
+
+      if (!sourceRes.ok) {
+        console.error('[PayMongo] Source creation failed:', JSON.stringify(sourceData));
+        return res.status(400).json({
+          error: sourceData.errors?.[0]?.detail || 'Failed to create GCash payment source',
+        });
+      }
+
+      const sourceId = sourceData.data.id;
+      const checkoutUrl = sourceData.data.attributes.redirect.checkout_url;
+
+      // Store pending order data keyed by our payment ID
+      pendingPayments.set(paymentId, {
+        sourceId,
+        userId, userName, items, subtotal, deliveryFee, total,
+        deliveryLocation, phoneNumber,
+        paymentMethod: 'gcash',
+        orderDate: new Date().toISOString(),
+        createdAt: Date.now(),
+      });
+
+      console.log(`[PayMongo] GCash source created: ${sourceId} (payment: ${paymentId})`);
+      res.json({ checkoutUrl, paymentId, sourceId });
+    } catch (error) {
+      console.error('[PayMongo] Error creating GCash source:', error);
+      res.status(500).json({ error: 'Failed to initiate GCash payment' });
+    }
+  });
+
+  // Step 2a: Success redirect — PayMongo sends user here after GCash authorization
+  app.get('/api/payments/gcash/success', async (req, res) => {
+    const paymentId = req.query.payment_id as string;
+    const pending = pendingPayments.get(paymentId);
+
+    if (!pending) {
+      console.warn(`[PayMongo] Success callback for unknown payment: ${paymentId}`);
+      return res.redirect('/?payment=expired');
+    }
+
+    try {
+      // Check if source is chargeable
+      const sourceRes = await fetch(`${PAYMONGO_API}/sources/${pending.sourceId}`, {
+        headers: { 'Authorization': PAYMONGO_AUTH },
+      });
+      const sourceData = await sourceRes.json();
+      const sourceStatus = sourceData.data?.attributes?.status;
+
+      console.log(`[PayMongo] Source ${pending.sourceId} status: ${sourceStatus}`);
+
+      if (sourceStatus === 'chargeable') {
+        // Create the actual payment
+        const payRes = await fetch(`${PAYMONGO_API}/payments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': PAYMONGO_AUTH,
+          },
+          body: JSON.stringify({
+            data: {
+              attributes: {
+                amount: Math.round(pending.total * 100),
+                source: { id: pending.sourceId, type: 'source' },
+                currency: 'PHP',
+                description: `SmartAgri order — ${pending.userName}`,
+              },
+            },
+          }),
+        });
+
+        const payData = await payRes.json();
+
+        if (!payRes.ok) {
+          console.error('[PayMongo] Payment creation failed:', JSON.stringify(payData));
+          return res.redirect('/?payment=failed');
+        }
+
+        console.log(`[PayMongo] Payment created: ${payData.data.id}`);
+
+        // Create the order in our database
+        const order = await container.repo.createOrder({
+          userId: pending.userId,
+          userName: pending.userName,
+          items: pending.items,
+          subtotal: pending.subtotal,
+          deliveryFee: pending.deliveryFee,
+          total: pending.total,
+          paymentMethod: 'gcash',
+          status: 'pending',
+          deliveryLocation: pending.deliveryLocation,
+          phoneNumber: pending.phoneNumber,
+          orderDate: pending.orderDate,
+          paymentDetails: {
+            provider: 'paymongo',
+            sourceId: pending.sourceId,
+            paymentId: payData.data.id,
+            paymentStatus: payData.data.attributes.status,
+            paidAt: new Date().toISOString(),
+          },
+        });
+
+        // Update stock for each item
+        for (const item of pending.items) {
+          await container.repo.updateProductStock(item.id, item.quantity);
+          // Notify producer via socket
+          if (item.producerId && onlineUsers.has(item.producerId)) {
+            const sockets = onlineUsers.get(item.producerId)!;
+            for (const socketId of sockets) {
+              io.to(socketId).emit('new_order', {
+                orderId: order._id || order.id,
+                productName: item.name,
+              });
+            }
+          }
+        }
+
+        pendingPayments.delete(paymentId);
+        const orderId = order._id || order.id;
+        return res.redirect(`/?payment=success&order_id=${orderId}`);
+      }
+
+      // Source not yet chargeable — edge case in test mode, shouldn't happen normally
+      console.warn(`[PayMongo] Source not chargeable yet: ${sourceStatus}`);
+      return res.redirect(`/?payment=pending&payment_id=${paymentId}`);
+    } catch (error) {
+      console.error('[PayMongo] Error in success handler:', error);
+      return res.redirect('/?payment=failed');
+    }
+  });
+
+  // Step 2b: Failed redirect — user cancelled or payment failed on PayMongo's side
+  app.get('/api/payments/gcash/failed', async (req, res) => {
+    const paymentId = req.query.payment_id as string;
+    pendingPayments.delete(paymentId);
+    console.log(`[PayMongo] GCash payment failed/cancelled: ${paymentId}`);
+    return res.redirect('/?payment=failed');
+  });
+
+  // Retrieve a pending order (for frontend status checks)
+  app.get('/api/payments/status/:paymentId', async (req, res) => {
+    const pending = pendingPayments.get(req.params.paymentId);
+    if (!pending) return res.json({ status: 'not_found' });
+
+    try {
+      const sourceRes = await fetch(`${PAYMONGO_API}/sources/${pending.sourceId}`, {
+        headers: { 'Authorization': PAYMONGO_AUTH },
+      });
+      const sourceData = await sourceRes.json();
+      res.json({ status: sourceData.data?.attributes?.status || 'unknown' });
+    } catch {
+      res.json({ status: 'error' });
+    }
+  });
+
   // Global map to track online users: userId -> Set of socketIds
   const onlineUsers = new Map<string, Set<string>>();
 
