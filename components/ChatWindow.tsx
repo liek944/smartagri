@@ -185,7 +185,8 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       senderId: currentUser.id,
       senderName: currentUser.fullName,
       text: 'Voice Message',
-      audio: base64Audio
+      audio: base64Audio,
+      otherUserId: Object.keys(conversation.participantNames).find(uid => uid !== currentUser?.id)
     });
   };
 
@@ -254,7 +255,8 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       conversationId: conversation.id,
       senderId: currentUser.id,
       senderName: currentUser.fullName,
-      text: msgText
+      text: msgText,
+      otherUserId: Object.keys(conversation.participantNames).find(uid => uid !== currentUser?.id)
     });
   };
 

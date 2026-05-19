@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import {
-  LayoutDashboard, PlusCircle, MapPin, MessageSquare, Edit2, Trash2, Tag, Box
+  LayoutDashboard, PlusCircle, MapPin, MessageSquare, Edit2, Trash2, Tag, Box, AlertTriangle
 } from 'lucide-react';
 import { User, Product, Order, Conversation } from '../../types';
 
@@ -120,6 +120,32 @@ export default function DashboardPage({
             )}
           </div>
 
+          {/* Sales Chart */}
+          {isProducer && myProducts.length > 0 && (
+            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-50 mt-8">
+              <h4 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
+                <Box size={20} className={colorScheme.text} /> Sales by Product
+              </h4>
+              <div className="space-y-4">
+                {myProducts.sort((a, b) => b.sold - a.sold).map(p => {
+                   const maxSold = Math.max(...myProducts.map(x => x.sold), 1);
+                   const percentage = (p.sold / maxSold) * 100;
+                   return (
+                     <div key={p.id}>
+                       <div className="flex justify-between text-sm mb-1">
+                         <span className="font-bold text-gray-700">{p.name}</span>
+                         <span className="text-gray-500">{p.sold} sold (₱{(p.sold * p.price).toLocaleString()})</span>
+                       </div>
+                       <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                         <div className={`${isFarmer ? 'bg-green-500' : 'bg-purple-500'} h-full rounded-full transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
+                       </div>
+                     </div>
+                   );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Manage Products (Farmers/Craft Producers) */}
           {isProducer && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-50 mt-8">
@@ -136,8 +162,13 @@ export default function DashboardPage({
                         <img src={p.image} alt={p.name} className="w-16 h-16 object-cover rounded-xl" />
                         <div>
                           <p className="font-bold text-gray-800">{p.name}</p>
-                          <p className="text-xs text-gray-500 flex items-center gap-2">
+                          <p className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
                             <Tag size={12} /> ₱{p.price} | Stock: {p.stock}
+                            {p.stock <= 5 && (
+                              <span className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-bold ml-1">
+                                <AlertTriangle size={12} /> Restock soon
+                              </span>
+                            )}
                           </p>
                         </div>
                       </div>

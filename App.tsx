@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { User as UserType, Product, CartItem, Order, UserRole, Conversation } from './types';
 import { api } from './api';
+import { io, Socket } from 'socket.io-client';
 import { SEED_PRODUCTS } from './server/seed-data';
 import {
   validatePhone, validatePhoneStrict, validateDelivery,
@@ -78,6 +79,15 @@ export default function App() {
   // ---- Chat ----
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+  const activeConversationRef = useRef<Conversation | null>(null);
+
+  // ---- Notifications ----
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    activeConversationRef.current = activeConversation;
+  }, [activeConversation]);
 
   // ===========================================================================
   // Effects
@@ -113,6 +123,48 @@ export default function App() {
     api.orders.list(currentUser.id).then(setOrders).catch(() => setOrders([]));
     api.conversations.list(currentUser.id).then(setConversations).catch(() => setConversations([]));
   }, [currentUser, activeSection]);
+
+  // Handle global socket connection for notifications
+  useEffect(() => {
+    if (!currentUser) {
+      socketRef.current?.disconnect();
+      return;
+    }
+    
+    // Connect and register
+    socketRef.current = io();
+    socketRef.current.emit('user_connected', currentUser.id);
+
+    // Listen for new sales
+    socketRef.current.on('new_order', (data: { orderId: string; productName: string }) => {
+      setNotifications((prev) => [{
+        id: Date.now().toString(),
+        type: 'sale',
+        message: `New sale for ${data.productName}!`,
+        read: false,
+        time: new Date().toISOString()
+      }, ...prev]);
+    });
+
+    // Listen for new messages
+    socketRef.current.on('new_message_notification', (data: { conversationId: string; senderName: string; text: string }) => {
+      setNotifications((prev) => {
+        // If we're already looking at this chat, don't notify
+        if (activeConversationRef.current?.id === data.conversationId) return prev;
+        return [{
+          id: Date.now().toString(),
+          type: 'message',
+          message: `New message from ${data.senderName}: ${data.text}`,
+          read: false,
+          time: new Date().toISOString()
+        }, ...prev];
+      });
+    });
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, [currentUser]);
 
   // Load cart when user changes
   useEffect(() => {
@@ -434,6 +486,8 @@ export default function App() {
         currentUser={currentUser} activeSection={activeSection} cartCount={cartCount}
         onNavigate={navigate} onCartOpen={() => setIsCartModalOpen(true)}
         onLogout={handleLogout} onMenuToggle={() => setIsMenuOpen(!isMenuOpen)} isMenuOpen={isMenuOpen}
+        notifications={notifications}
+        onMarkNotificationsRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))}
       />
       <MobileMenu isOpen={isMenuOpen} currentUser={currentUser} onNavigate={navigate} onLogout={handleLogout} />
 

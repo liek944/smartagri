@@ -184,6 +184,12 @@ async function startServer() {
       const order = await container.repo.createOrder(req.body);
       for (const item of req.body.items) {
         await container.repo.updateProductStock(item.id, item.quantity);
+        if (item.producerId && onlineUsers.has(item.producerId)) {
+          const sockets = onlineUsers.get(item.producerId)!;
+          for (const socketId of sockets) {
+            io.to(socketId).emit('new_order', { orderId: order._id || order.id, productName: item.name });
+          }
+        }
       }
       res.json(order);
     } catch {
@@ -297,13 +303,22 @@ async function startServer() {
     });
 
     socket.on('send_message', async (data) => {
-      const { conversationId, senderId, senderName, text, audio } = data;
+      const { conversationId, senderId, senderName, text, audio, otherUserId } = data;
       const message = await container.repo.createMessage({
         conversationId, senderId, senderName, text, audio,
         timestamp: new Date(),
       });
       await container.repo.updateConversationLastMessage(conversationId, text);
       io.to(conversationId).emit('new_message', message);
+      
+      if (otherUserId && onlineUsers.has(otherUserId)) {
+        const sockets = onlineUsers.get(otherUserId)!;
+        for (const socketId of sockets) {
+          io.to(socketId).emit('new_message_notification', {
+            conversationId, senderName, text
+          });
+        }
+      }
     });
 
     socket.on('disconnect', () => {
