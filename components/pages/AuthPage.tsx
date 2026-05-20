@@ -20,7 +20,7 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode }
       <div className="flex-1 text-center md:text-left flex flex-col items-center md:items-start gap-4">
         <div className="flex items-center gap-4 mb-2">
           <img src={logo} className="h-16 w-16 object-contain bg-white p-2.5 rounded-2xl shadow-md border border-gray-100" alt="Logo" />
-          <h2 className="text-6xl font-black text-primary tracking-tighter">SmartAgriCraft</h2>
+          <h2 className="text-3xl font-black text-primary tracking-tighter">SmartAgriCraft</h2>
         </div>
         <p className="text-2xl font-medium text-gray-700 leading-tight">
           Connect with local farmers and craft producers in Roxas, Oriental Mindoro. Authentically local.
