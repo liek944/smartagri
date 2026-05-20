@@ -3,6 +3,7 @@ import {
   Store, ShoppingCart, LogIn, LogOut, Menu, X, Bell, MessageSquare
 } from 'lucide-react';
 import { User } from '../../types';
+import logo from '@/Logo.png';
 
 interface NavbarProps {
   currentUser: User | null;
@@ -28,8 +29,8 @@ export default function Navbar({
     <nav className="bg-primary text-white p-4 sticky top-0 z-50 shadow-md">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('home')}>
-          <div className="bg-white p-1 rounded-lg">
-            <Store className="text-primary h-6 w-6" />
+          <div className="bg-white p-1 rounded-lg flex items-center justify-center">
+            <img src={logo} className="h-6 w-6 object-contain" alt="SmartAgriCraft Logo" />
           </div>
           <span className="text-xl font-bold tracking-tight">SmartAgriCraft</span>
         </div>

@@ -3,6 +3,7 @@ import { User as UserType, Product, CartItem, Order, UserRole, Conversation } fr
 import { api } from './api';
 import { io, Socket } from 'socket.io-client';
 import { SEED_PRODUCTS } from './server/seed-data';
+import logo from '@/Logo.png';
 import {
   validatePhone, validatePhoneStrict, validateDelivery,
   validateAuthRegister, validateAuthLogin, validateProduct,
@@ -590,7 +591,10 @@ export default function App() {
 
       <main className="flex-grow max-w-7xl mx-auto w-full p-4 md:p-8">
         {loading ? (
-          <div className="flex items-center justify-center h-64 text-primary font-bold">Loading SmartAgriCraft...</div>
+          <div className="flex flex-col items-center justify-center h-96 gap-4 animate-pulse">
+            <img src={logo} className="h-20 w-20 object-contain bg-white p-3.5 rounded-3xl shadow-lg border border-gray-100" alt="Loading Logo" />
+            <div className="text-primary font-black text-xl tracking-tight">SmartAgriCraft</div>
+          </div>
         ) : (
           <>
             {activeSection === 'home' && (

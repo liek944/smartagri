@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { UserRole } from '../../types';
+import logo from '@/Logo.png';
 
 interface AuthPageProps {
   authMode: 'login' | 'register';
@@ -16,8 +17,11 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode }
       animate={{ opacity: 1, scale: 1 }}
       className="max-w-[1000px] mx-auto py-8 flex flex-col md:flex-row items-center gap-8 lg:gap-16"
     >
-      <div className="flex-1 text-center md:text-left">
-        <h2 className="text-6xl font-black text-primary mb-6 tracking-tighter">SmartAgriCraft</h2>
+      <div className="flex-1 text-center md:text-left flex flex-col items-center md:items-start gap-4">
+        <div className="flex items-center gap-4 mb-2">
+          <img src={logo} className="h-16 w-16 object-contain bg-white p-2.5 rounded-2xl shadow-md border border-gray-100" alt="Logo" />
+          <h2 className="text-6xl font-black text-primary tracking-tighter">SmartAgriCraft</h2>
+        </div>
         <p className="text-2xl font-medium text-gray-700 leading-tight">
           Connect with local farmers and craft producers in Roxas, Oriental Mindoro. Authentically local.
         </p>
