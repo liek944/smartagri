@@ -325,7 +325,7 @@ export default function App() {
           userName: currentUser.fullName,
           items: cart.map((i) => ({ ...i, id: i.id })),
           subtotal: cartSubtotal,
-          deliveryFee: 50,
+          deliveryFee: 20,
           total: cartTotal,
           deliveryLocation: `${deliveryLocation}, Roxas, Or. Mindoro`,
           phoneNumber,
