@@ -13,8 +13,10 @@
 ---
 
 > [!NOTE]
+>
 > ### 🎓 Thesis Project Context
-> **SmartAgriCraft** is developed as a **Thesis Project for John Paul College**. 
+>
+> **SmartAgriCraft** is developed as a **Thesis Project for John Paul College**.
 > Designed specifically to address the economic realities of Oriental Mindoro, this platform serves as an direct-to-consumer digital bridge. It empowers local farmers, fishers, and indigenous craft producers by eliminating costly middlemen, facilitating direct commerce, and unlocking broader markets for regional products.
 
 ---
@@ -44,7 +46,7 @@ graph TD
         DB[(MongoDB Atlas / JSON Fallback)]
         PM[PayMongo GCash Gateway]
     end
-    
+
     Buyer -->|1. GCash Checkout| API
     API -->|2. Create Source| PM
     PM -->|3. Return Redirect URL| Buyer
@@ -60,46 +62,56 @@ graph TD
 ## ✨ Key Features
 
 ### 👤 Role-Based Portals & Experiences
+
 The application dynamically alters its workspace configuration and interface metrics based on the signed-in user's role:
-*   **Buyers:** Advanced marketplace exploration, local shopping cart isolation, unified checkouts, purchase history, delivery milestones, and ratings/reviews.
-*   **Farmers & Craft Producers:** Dedicated dashboard featuring revenue metrics, product listing creation with image previews, live order state configuration, low-stock warnings, and transaction breakdowns.
+
+- **Buyers:** Advanced marketplace exploration, local shopping cart isolation, unified checkouts, purchase history, delivery milestones, and ratings/reviews.
+- **Farmers & Craft Producers:** Dedicated dashboard featuring revenue metrics, product listing creation with image previews, live order state configuration, low-stock warnings, and transaction breakdowns.
 
 ### 💬 Unified Real-Time Messaging Suite
+
 Rather than cluttering the workspace with isolated, product-specific message feeds, SmartAgriCraft features a unified conversation engine:
-*   **1-to-1 Threading:** All interactions between a buyer and a producer are grouped into a single, high-fidelity chat.
-*   **Dynamic Attachments:** Integrated camera capture with automatic image rotation handling, real-time uploads, and previews.
-*   **Instant Presence:** Interactive online/offline badges, typing indicators, and socket-driven unread message counts.
+
+- **1-to-1 Threading:** All interactions between a buyer and a producer are grouped into a single, high-fidelity chat.
+- **Dynamic Attachments:** Integrated camera capture with automatic image rotation handling, real-time uploads, and previews.
+- **Instant Presence:** Interactive online/offline badges, typing indicators, and socket-driven unread message counts.
 
 ### 💳 Complete PayMongo Payment Loop
+
 Seamless processing for Philippines' local payment ecosystem:
-*   **GCash & Cards:** Integrated via the PayMongo API using secure source redirection.
-*   **Receipt Handshake:** Automated success/fail redirects with a verification step that monitors source charging before committing database changes.
-*   **Fallback Strategy:** Full support for Cash on Delivery (COD) workflows.
+
+- **GCash & Cards:** Integrated via the PayMongo API using secure source redirection.
+- **Receipt Handshake:** Automated success/fail redirects with a verification step that monitors source charging before committing database changes.
+- **Fallback Strategy:** Full support for Cash on Delivery (COD) workflows.
 
 ### 📈 Farmer / Producer Analytics
+
 Producers are armed with commercial insights:
-*   **Visual Data representation:** Real-time dashboards visualizing revenue and units sold using responsive **Recharts** configurations.
-*   **Inventory Threshold Alerts:** Active status indications highlighting products with low stock count (`stock <= 5`).
-*   **Fulfillment Control:** Order pipeline tracking with simple state transitions (`pending → confirmed → dispatched → out_for_delivery → delivered`).
+
+- **Visual Data representation:** Real-time dashboards visualizing revenue and units sold using responsive **Recharts** configurations.
+- **Inventory Threshold Alerts:** Active status indications highlighting products with low stock count (`stock <= 5`).
+- **Fulfillment Control:** Order pipeline tracking with simple state transitions (`pending → confirmed → dispatched → out_for_delivery → delivered`).
 
 ---
 
 ## 🛠 Technical Stack
 
 ### Frontend Core
-*   **React 19** — Highly responsive UI rendering.
-*   **TypeScript** — End-to-end type safety.
-*   **Vite** — Optimized, fast bundling.
-*   **Tailwind CSS v4** — High-performance utility styling.
-*   **Motion** — Fluid animations, micro-interactions, and visual feedback.
-*   **Recharts** — Dynamic administrative statistics.
-*   **Lucide React** — Premium typography icon pack.
+
+- **React 19** — Highly responsive UI rendering.
+- **TypeScript** — End-to-end type safety.
+- **Vite** — Optimized, fast bundling.
+- **Tailwind CSS v4** — High-performance utility styling.
+- **Motion** — Fluid animations, micro-interactions, and visual feedback.
+- **Recharts** — Dynamic administrative statistics.
+- **Lucide React** — Premium typography icon pack.
 
 ### Backend & Database Services
-*   **Express & Node.js** — Fast server architecture.
-*   **Socket.io** — Real-time WebSockets bidirectional communication.
-*   **MongoDB Atlas (via Mongoose)** — Production-grade cloud data persistence.
-*   **JSON Adapter Fallback (`db.json`)** — Active repository pattern that automatically falls back to local file storage if MongoDB credentials are not present, ensuring flawless local execution.
+
+- **Express & Node.js** — Fast server architecture.
+- **Socket.io** — Real-time WebSockets bidirectional communication.
+- **MongoDB Atlas (via Mongoose)** — Production-grade cloud data persistence.
+- **JSON Adapter Fallback (`db.json`)** — Active repository pattern that automatically falls back to local file storage if MongoDB credentials are not present, ensuring flawless local execution.
 
 ---
 
@@ -127,9 +139,11 @@ GEMINI_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxxx
 ## 💻 Running Locally
 
 ### Prerequisites
+
 Make sure you have [Node.js](https://nodejs.org/) installed.
 
 ### Step-by-Step Setup
+
 1.  **Clone the workspace** and navigate into the project directory:
     ```bash
     cd smartagri
@@ -159,12 +173,6 @@ To package the application into an optimized build for deployment (e.g. Render, 
     ```bash
     npm start
     ```
-
----
-
-## 📍 View in AI Studio
-The primary application interface can be viewed online at:  
-👉 **[AI Studio Sandbox](https://ai.studio/apps/ddb0b4de-84ad-41d0-9a3b-773e26dc6982)**
 
 ---
 
