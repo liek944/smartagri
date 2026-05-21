@@ -9,6 +9,7 @@ import {
   validateAuthRegister, validateAuthLogin, validateProduct,
   sanitizePhone,
 } from './lib/validation';
+import { signInWithGoogle } from './lib/firebase';
 
 // Layout
 import Navbar from './components/layout/Navbar';
@@ -432,6 +433,32 @@ export default function App() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setAuthError('');
+      const firebaseUser = await signInWithGoogle();
+      
+      if (firebaseUser.email) {
+        const data = await api.auth.googleLogin({
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          uid: firebaseUser.uid
+        });
+
+        if (data.role === 'buyer' && authMode === 'register') {
+          setCurrentUser(data); 
+          setIsRolePickerOpen(true);
+        } else {
+          setCurrentUser(data);
+          localStorage.setItem('sac_user', JSON.stringify(data));
+          setActiveSection('home');
+        }
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Google Sign-In failed.');
+    }
+  };
+
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('sac_user');
@@ -632,6 +659,7 @@ export default function App() {
                 authMode={authMode} authError={authError}
                 onSubmit={handleAuthSubmit}
                 onToggleMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+                onGoogleSignIn={handleGoogleSignIn}
               />
             )}
             {activeSection === 'admin' && currentUser?.role === 'admin' && (

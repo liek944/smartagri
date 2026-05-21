@@ -143,6 +143,34 @@ async function startServer() {
     }
   });
 
+  app.post('/api/auth/google', async (req, res) => {
+    try {
+      const { email, displayName, uid } = req.body;
+      let user = await container.repo.findUserByEmailOrUsername(email);
+      
+      if (!user) {
+        const hashedPassword = await bcrypt.hash(uid, 10);
+        const userData = {
+          id: `USR-${Date.now()}`,
+          email,
+          username: email.split('@')[0],
+          password: hashedPassword,
+          fullName: displayName || email.split('@')[0],
+          role: 'buyer',
+          location: 'Roxas',
+          joinedDate: new Date().toLocaleDateString(),
+        };
+        user = await container.repo.createUser(userData);
+      }
+      
+      const userResponse = { ...user };
+      delete userResponse.password;
+      res.json(userResponse);
+    } catch {
+      res.status(500).json({ error: 'Google login failed' });
+    }
+  });
+
   // --- User routes ---
   app.get('/api/users', async (_req, res) => {
     try {

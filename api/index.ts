@@ -87,6 +87,12 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    googleLogin: (data: { email: string; displayName: string | null; uid: string }): Promise<User> =>
+      request<User>('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
 
   users: {
