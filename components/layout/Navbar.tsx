@@ -29,7 +29,7 @@ export default function Navbar({
     <nav className="bg-primary text-white p-4 sticky top-0 z-50 shadow-md">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('home')}>
-          <div className="bg-white p-1 rounded-lg flex items-center justify-center">
+          <div className="bg-white p-1 rounded-full flex items-center justify-center">
             <img src={logo} className="h-6 w-6 object-contain" alt="SmartAgriCraft Logo" />
           </div>
           <span className="text-xl font-bold tracking-tight">SmartAgriCraft</span>

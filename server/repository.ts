@@ -73,36 +73,37 @@ export class MongoRepository implements Repository {
   async findUserByEmailOrUsername(identifier: string): Promise<any | null> {
     const user = await User.findOne({
       $or: [{ email: identifier }, { username: identifier }],
-    });
-    return user ? user.toObject() : null;
+    }).lean();
+    return user || null;
   }
 
   async findUserById(id: string): Promise<any | null> {
-    const user = await User.findOne({ id });
-    return user ? user.toObject() : null;
+    const user = await User.findOne({ id }).lean();
+    return user || null;
   }
 
   async createUser(data: any): Promise<any> {
     const user = new User(data);
     await user.save();
-    return user.toObject();
+    return user.toObject({ versionKey: false });
   }
 
   async upsertUser(id: string, data: any): Promise<any> {
     const user = await User.findOneAndUpdate({ id }, data, {
       upsert: true,
-      new: true,
+      returnDocument: 'after',
+      lean: true,
     });
-    return user!.toObject();
+    return user!;
   }
 
   async listUsers(): Promise<any[]> {
-    return User.find();
+    return User.find().lean();
   }
 
   async updateUserStatus(id: string, isActive: boolean): Promise<any> {
-    const user = await User.findOneAndUpdate({ id }, { isActive }, { new: true });
-    return user ? user.toObject() : null;
+    const user = await User.findOneAndUpdate({ id }, { isActive }, { returnDocument: 'after', lean: true });
+    return user || null;
   }
 
   async listProducts(): Promise<any[]> {
@@ -122,7 +123,7 @@ export class MongoRepository implements Repository {
   }
 
   async updateProduct(id: string, data: any): Promise<any> {
-    const product = await Product.findByIdAndUpdate(id, data, { new: true });
+    const product = await Product.findByIdAndUpdate(id, data, { returnDocument: 'after' });
     return product;
   }
 
@@ -154,7 +155,7 @@ export class MongoRepository implements Repository {
   }
 
   async updateOrderStatus(id: string, status: string): Promise<any> {
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
+    const order = await Order.findByIdAndUpdate(id, { status }, { returnDocument: 'after' });
     return order;
   }
 
