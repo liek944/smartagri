@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { createRepository } from './server/repository';
+import { sendReceiptEmail } from './server/email';
 
 dotenv.config();
 
@@ -554,6 +555,31 @@ async function startServer() {
 
         pendingPayments.delete(paymentId);
         const orderId = order._id || order.id;
+
+        // Fire-and-forget receipt email to buyer
+        (async () => {
+          try {
+            const buyer = await container.repo.findUserById(pending.userId);
+            if (buyer?.email) {
+              sendReceiptEmail({
+                orderId: String(orderId),
+                buyerName: pending.userName,
+                buyerEmail: buyer.email,
+                items: pending.items,
+                subtotal: pending.subtotal,
+                deliveryFee: pending.deliveryFee,
+                total: pending.total,
+                deliveryLocation: pending.deliveryLocation,
+                phoneNumber: pending.phoneNumber,
+                orderDate: pending.orderDate,
+                paymentMethod: 'gcash',
+              });
+            }
+          } catch (emailErr) {
+            console.error('[PayMongo] Receipt email error (non-blocking):', emailErr);
+          }
+        })();
+
         return res.redirect(`/?payment=success&order_id=${orderId}`);
       }
 
