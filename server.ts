@@ -17,7 +17,7 @@ const DB_FILE = path.join(process.cwd(), 'db.json');
 async function startServer() {
   const app = express();
   const httpServer = createServer(app);
-  const io = new Server(httpServer, { cors: { origin: '*' } });
+  const io = new Server(httpServer, { cors: { origin: '*' }, maxHttpBufferSize: 10e6 });
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
