@@ -69,6 +69,7 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [buyNowProductId, setBuyNowProductId] = useState<string | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'gcash' | 'credit' | 'cod'>('cod');
@@ -302,8 +303,19 @@ export default function App() {
   const buyNow = (product: Product) => {
     if (!currentUser) { setActiveSection('auth'); return; }
     if (currentUser.role !== 'buyer') { alert('Only buyers can purchase items.'); return; }
+    const productId = product.id || product._id || '';
     setCart((prev) => { if (prev.find((i) => i.id === product.id)) return prev; return [...prev, { ...product, quantity: 1 }]; });
+    setBuyNowProductId(productId);
     setIsCheckoutModalOpen(true);
+  };
+
+  const handleCheckoutClose = () => {
+    setIsCheckoutModalOpen(false);
+    // If this was a "buy now" flow and the user cancelled, remove the product from cart
+    if (buyNowProductId) {
+      setCart((prev) => prev.filter((i) => i.id !== buyNowProductId));
+      setBuyNowProductId(null);
+    }
   };
 
   // ---- Checkout form ----
@@ -389,7 +401,7 @@ export default function App() {
         deliveryLocation: `${deliveryLocation}, Roxas, Or. Mindoro`,
         phoneNumber, orderDate: new Date().toISOString(),
       } as any);
-      setCart([]); setIsCheckoutModalOpen(false);
+      setCart([]); setIsCheckoutModalOpen(false); setBuyNowProductId(null);
       setLastOrder(data); setIsReceiptOpen(true);
       fetchProducts();
 
@@ -702,14 +714,14 @@ export default function App() {
         isOpen={isCartModalOpen} cart={cart} cartSubtotal={cartSubtotal} cartTotal={cartTotal}
         onClose={() => setIsCartModalOpen(false)} onRemove={removeFromCart}
         onUpdateQuantity={updateCartQuantity}
-        onCheckout={() => { setIsCartModalOpen(false); setIsCheckoutModalOpen(true); }}
+        onCheckout={() => { setIsCartModalOpen(false); setBuyNowProductId(null); setIsCheckoutModalOpen(true); }}
       />
       <CheckoutModal
         isOpen={isCheckoutModalOpen} cartCount={cartCount} cartSubtotal={cartSubtotal} cartTotal={cartTotal}
         deliveryLocation={deliveryLocation} phoneNumber={phoneNumber}
         selectedPaymentMethod={selectedPaymentMethod}
         phoneError={phoneError} deliveryError={deliveryError}
-        onClose={() => setIsCheckoutModalOpen(false)}
+        onClose={handleCheckoutClose}
         onDeliveryChange={handleDeliveryChange} onPhoneChange={handlePhoneChange}
         onPhonePaste={handlePhonePaste}
         onPaymentMethodChange={setSelectedPaymentMethod} onConfirm={handleCheckout}
