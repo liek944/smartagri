@@ -680,6 +680,14 @@ async function startServer() {
       }
     });
 
+    socket.on('unsend_message', async (data: { conversationId: string; messageId: string; senderId: string }) => {
+      const { conversationId, messageId, senderId } = data;
+      const result = await container.repo.unsendMessage(messageId, senderId);
+      if (result) {
+        io.to(conversationId).emit('message_unsent', { messageId, conversationId });
+      }
+    });
+
     socket.on('disconnect', () => {
       if (currentUserId && onlineUsers.has(currentUserId)) {
         const userSockets = onlineUsers.get(currentUserId)!;

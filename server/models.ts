@@ -55,6 +55,7 @@ const MessageSchema = new mongoose.Schema({
   audio: String,
   image: String,
   timestamp: { type: Date, default: Date.now },
+  unsent: { type: Boolean, default: false },
 });
 
 const ConversationSchema = new mongoose.Schema({

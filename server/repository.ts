@@ -47,6 +47,7 @@ export interface Repository {
   // Messages
   listMessagesByConversation(conversationId: string): Promise<any[]>;
   createMessage(data: any): Promise<any>;
+  unsendMessage(messageId: string, senderId: string): Promise<any | null>;
 
   // Reviews
   createReview(data: any): Promise<any>;
@@ -197,6 +198,17 @@ export class MongoRepository implements Repository {
     const message = new Message(data);
     await message.save();
     return message;
+  }
+
+  async unsendMessage(messageId: string, senderId: string): Promise<any | null> {
+    const msg = await Message.findById(messageId);
+    if (!msg || msg.senderId !== senderId) return null;
+    msg.unsent = true;
+    msg.text = '';
+    msg.audio = undefined;
+    msg.image = undefined;
+    await msg.save();
+    return msg;
   }
 
   async listReviewsByProduct(productId: string): Promise<any[]> {
@@ -474,6 +486,17 @@ export class JsonFileRepository implements Repository {
     this.db.messages.push(message);
     await this.save();
     return message;
+  }
+
+  async unsendMessage(messageId: string, senderId: string): Promise<any | null> {
+    const msg = this.db.messages.find((m) => m._id === messageId || m.id === messageId);
+    if (!msg || msg.senderId !== senderId) return null;
+    msg.unsent = true;
+    msg.text = '';
+    delete msg.audio;
+    delete msg.image;
+    await this.save();
+    return msg;
   }
 
   async listReviewsByProduct(productId: string): Promise<any[]> {

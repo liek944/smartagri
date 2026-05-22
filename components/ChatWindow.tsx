@@ -1,7 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Send, X, Mic, Volume2, CheckCircle, AlertCircle, Image as ImageIcon, Camera, RotateCw } from 'lucide-react';
-import { Conversation, ChatMessage, User } from '../types';
+import { Send, X, Mic, Volume2, CheckCircle, AlertCircle, Image as ImageIcon, Camera, RotateCw, Reply, Trash2 } from 'lucide-react';
+import { Conversation, ChatMessage, User, ReplyRef } from '../types';
+
+/** createLongPressHandlers — returns touch handlers that fire callback after `delay` ms */
+function createLongPressHandlers(onLongPress: () => void, delay = 500) {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const start = (e: React.TouchEvent) => {
+    timer = setTimeout(() => {
+      onLongPress();
+    }, delay);
+  };
+
+  const cancel = () => {
+    if (timer) clearTimeout(timer);
+  };
+
+  return { onTouchStart: start, onTouchEnd: cancel, onTouchMove: cancel };
+}
 
 /**
  * Detect the best supported MIME type for audio recording.
@@ -91,6 +108,14 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // Feature 1 — Reply
+  const [replyingTo, setReplyingTo] = useState<ReplyRef | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Feature 2 — Unsend
+  const [contextMenuMsgId, setContextMenuMsgId] = useState<string | null>(null);
   
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -348,6 +373,17 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       }, 100);
     });
 
+    // Feature 2 — listen for unsend events from server
+    socketRef.current.on('message_unsent', ({ messageId }: { messageId: string }) => {
+      setMessages(prev => prev.map(m => {
+        const mid = m.id || m._id;
+        if (mid === messageId) {
+          return { ...m, unsent: true, text: '', audio: undefined, image: undefined };
+        }
+        return m;
+      }));
+    });
+
     return () => {
       socketRef.current?.disconnect();
     };
@@ -366,6 +402,8 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
     const imageToSend = selectedImage;
     setSelectedImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    const replyPayload = replyingTo || undefined;
+    setReplyingTo(null);
 
     socketRef.current.emit('send_message', {
       conversationId: conversation.id,
@@ -373,9 +411,30 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       senderName: currentUser.fullName,
       text: msgText,
       image: imageToSend || undefined,
+      replyTo: replyPayload,
       otherUserId: Object.keys(conversation.participantNames).find(uid => uid !== currentUser?.id)
     });
   };
+
+  /** Scroll to a message and briefly highlight it */
+  const scrollToMessage = useCallback((msgId: string) => {
+    const el = messageRefs.current.get(msgId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedMsgId(msgId);
+    setTimeout(() => setHighlightedMsgId(null), 1500);
+  }, []);
+
+  /** Feature 2 — unsend a message */
+  const handleUnsend = useCallback((msgId: string) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit('unsend_message', {
+      conversationId: conversation.id,
+      messageId: msgId,
+      senderId: currentUser.id,
+    });
+    setContextMenuMsgId(null);
+  }, [conversation.id, currentUser.id]);
 
   return (
     <div className="fixed bottom-4 right-4 w-80 md:w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col z-[1000] overflow-hidden">
@@ -406,17 +465,46 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
       </div>
 
       {/* Messages - Messenger Style */}
-      <div className="flex-grow overflow-y-auto p-4 space-y-2 bg-white">
+      <div className="flex-grow overflow-y-auto p-4 space-y-2 bg-white" onClick={() => contextMenuMsgId && setContextMenuMsgId(null)}>
 
         
         {messages.map((msg, idx) => {
           const isMe = msg.senderId === currentUser?.id;
           const showAvatar = idx === 0 || messages[idx-1].senderId !== msg.senderId;
-          
+          const msgKey = msg.id || (msg as any)._id || String(idx);
+          const isHighlighted = highlightedMsgId === msgKey;
+          const isUnsent = !!msg.unsent;
+          const showContextMenu = contextMenuMsgId === msgKey;
+
+          const triggerReply = () => {
+            if (isUnsent) return;
+            setContextMenuMsgId(null);
+            setReplyingTo({
+              id: msgKey,
+              senderId: msg.senderId,
+              senderName: msg.senderName,
+              text: msg.audio ? undefined : (msg.text || undefined),
+              hasAudio: !!msg.audio,
+              hasImage: !!msg.image,
+            });
+          };
+
+          // Mobile: long press opens context menu (reply + unsend) instead of just reply
+          const longPressHandlers = createLongPressHandlers(() => {
+            if (isUnsent) return;
+            setContextMenuMsgId(msgKey);
+          });
+
           return (
-            <div 
-              key={msg.id || idx} 
-              className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'} ${!showAvatar ? 'mt-1' : 'mt-4'}`}
+            <div
+              key={msgKey}
+              ref={(el) => {
+                if (el) messageRefs.current.set(msgKey, el);
+                else messageRefs.current.delete(msgKey);
+              }}
+              className={`flex items-end gap-2 ${
+                isMe ? 'justify-end' : 'justify-start'
+              } ${!showAvatar ? 'mt-1' : 'mt-4'} group/bubble relative`}
             >
               {!isMe && showAvatar && (
                 <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-500 shrink-0">
@@ -424,39 +512,160 @@ export default function ChatWindow({ conversation, currentUser, onClose }: ChatW
                 </div>
               )}
               {!isMe && !showAvatar && <div className="w-7" />}
-              
-              <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-[13px] leading-snug shadow-sm ${
-                isMe 
-                  ? 'bg-primary text-white rounded-br-sm' 
-                  : 'bg-[#F0F2F5] text-gray-800 rounded-bl-sm'
-              }`}>
-                {msg.audio ? (
-                  <div className="flex flex-col gap-2 min-w-[200px]">
-                    <div className="flex items-center gap-2">
-                       <Volume2 size={14} className={isMe ? 'text-white' : 'text-primary'} />
-                       <span className="text-[10px] uppercase font-bold opacity-70">Voice Message</span>
+
+              {/* Desktop: reply + unsend buttons float on the left of sent messages */}
+              {isMe && !isUnsent && (
+                <div className="opacity-0 group-hover/bubble:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0 order-first">
+                  <button
+                    onClick={() => handleUnsend(msgKey)}
+                    className="p-1 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                    title="Unsend"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <button
+                    onClick={triggerReply}
+                    className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Reply"
+                  >
+                    <Reply size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Unsent message placeholder */}
+              {isUnsent ? (
+                <div className={`max-w-[75%] px-4 py-2 rounded-2xl text-[13px] leading-snug ${
+                  isMe ? 'rounded-br-sm' : 'rounded-bl-sm'
+                } border border-dashed border-gray-300 bg-gray-50`}>
+                  <p className="text-gray-400 italic text-[12px] select-none">Message unsent</p>
+                </div>
+              ) : (
+                <div
+                  {...longPressHandlers}
+                  className={`max-w-[75%] px-4 py-2 rounded-2xl text-[13px] leading-snug shadow-sm transition-colors duration-300 ${
+                    isMe
+                      ? 'bg-primary text-white rounded-br-sm'
+                      : 'bg-[#F0F2F5] text-gray-800 rounded-bl-sm'
+                  } ${isHighlighted ? '!bg-yellow-200 !text-gray-900' : ''}`}
+                >
+                  {/* Quoted reply preview */}
+                  {msg.replyTo && (
+                    <button
+                      type="button"
+                      onClick={() => scrollToMessage(msg.replyTo!.id)}
+                      className={`block w-full text-left mb-2 rounded-lg overflow-hidden border-l-4 ${
+                        isMe ? 'border-white/60 bg-white/15 hover:bg-white/25' : 'border-primary/60 bg-primary/8 hover:bg-primary/15'
+                      } px-2 py-1 transition-colors`}
+                    >
+                      <p className={`text-[10px] font-bold mb-0.5 ${
+                        isMe ? 'text-white/80' : 'text-primary'
+                      }`}>
+                        {msg.replyTo.senderName}
+                      </p>
+                      <p className={`text-[11px] truncate opacity-80 ${
+                        isMe ? 'text-white' : 'text-gray-600'
+                      }`}>
+                        {msg.replyTo.hasAudio ? '🎤 Voice message'
+                          : msg.replyTo.hasImage ? '📷 Photo'
+                          : (msg.replyTo.text || 'Message')}
+                      </p>
+                    </button>
+                  )}
+
+                  {msg.audio ? (
+                    <div className="flex flex-col gap-2 min-w-[200px]">
+                      <div className="flex items-center gap-2">
+                         <Volume2 size={14} className={isMe ? 'text-white' : 'text-primary'} />
+                         <span className="text-[10px] uppercase font-bold opacity-70">Voice Message</span>
+                      </div>
+                      <AudioPlayer src={msg.audio} />
                     </div>
-                    <AudioPlayer src={msg.audio} />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {msg.image && (
-                      <img 
-                        src={msg.image} 
-                        alt="Message attachment" 
-                        className="max-h-48 rounded-xl object-cover cursor-zoom-in hover:opacity-90 transition-opacity shadow-sm max-w-full"
-                        onClick={() => setLightboxImage(msg.image || null)}
-                      />
-                    )}
-                    {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {msg.image && (
+                        <img
+                          src={msg.image}
+                          alt="Message attachment"
+                          className="max-h-48 rounded-xl object-cover cursor-zoom-in hover:opacity-90 transition-opacity shadow-sm max-w-full"
+                          onClick={() => setLightboxImage(msg.image || null)}
+                        />
+                      )}
+                      {msg.text && <p className="whitespace-pre-wrap">{msg.text}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Desktop: reply button on the right side of received messages */}
+              {!isMe && !isUnsent && (
+                <button
+                  onClick={triggerReply}
+                  className="opacity-0 group-hover/bubble:opacity-100 transition-opacity p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 shrink-0"
+                  title="Reply"
+                >
+                  <Reply size={14} />
+                </button>
+              )}
+
+              {/* Mobile: context menu (long press) — shown as a floating popover */}
+              {showContextMenu && (
+                <div
+                  className={`absolute z-50 bg-white rounded-xl shadow-xl border border-gray-200 py-1 min-w-[140px] animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+                    isMe ? 'right-0 bottom-full mb-2' : 'left-9 bottom-full mb-2'
+                  }`}
+                >
+                  <button
+                    onClick={triggerReply}
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Reply size={14} className="text-gray-500" />
+                    Reply
+                  </button>
+                  {isMe && (
+                    <button
+                      onClick={() => handleUnsend(msgKey)}
+                      className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                      Unsend
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setContextMenuMsgId(null)}
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-[13px] text-gray-400 hover:bg-gray-50 transition-colors"
+                  >
+                    <X size={14} />
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
         <div ref={scrollRef} />
       </div>
+
+      {/* Reply preview bar */}
+      {replyingTo && (
+        <div className="mx-3 mb-1 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+          <div className="flex-grow min-w-0">
+            <p className="text-[10px] font-bold text-blue-500 mb-0.5">Replying to {replyingTo.senderName}</p>
+            <p className="text-[11px] text-gray-600 truncate">
+              {replyingTo.hasAudio ? '🎤 Voice message'
+                : replyingTo.hasImage ? '📷 Photo'
+                : (replyingTo.text || 'Message')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReplyingTo(null)}
+            className="shrink-0 p-1 rounded-full hover:bg-blue-100 text-blue-400 hover:text-blue-600 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Selected Image Preview Panel */}
       {selectedImage && (

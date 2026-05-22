@@ -62,6 +62,20 @@ export interface Order {
   paymentDetails?: any;
 }
 
+export interface ReplyRef {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text?: string;
+  hasAudio?: boolean;
+  hasImage?: boolean;
+}
+
+export interface Reaction {
+  emoji: string;
+  userIds: string[];
+}
+
 export interface ChatMessage {
   id: string;
   senderId: string;
@@ -70,6 +84,9 @@ export interface ChatMessage {
   audio?: string;
   image?: string;
   timestamp: string;
+  replyTo?: ReplyRef;
+  unsent?: boolean;
+  reactions?: Reaction[];
 }
 
 export interface Conversation {
