@@ -108,7 +108,13 @@ export default function App() {
         if (parsed?.id) {
           api.users.get(parsed.id)
             .then((data) => { setCurrentUser(data); setLoading(false); })
-            .catch(() => { localStorage.removeItem('sac_user'); setLoading(false); });
+            .catch(() => {
+              // Don't wipe localStorage on transient API failures (e.g. server busy
+              // after PayMongo redirect). Fall back to cached user data instead.
+              console.warn('[Auth] Could not refresh user from server, using cached data');
+              setCurrentUser(parsed);
+              setLoading(false);
+            });
         } else { setLoading(false); }
       } catch { setLoading(false); }
     } else { setLoading(false); }
@@ -130,18 +136,31 @@ export default function App() {
     api.conversations.list(currentUser.id).then(setConversations).catch(() => setConversations([]));
   }, [currentUser, activeSection]);
 
-  // Handle return from PayMongo GCash redirect
+  // Handle return from PayMongo GCash redirect — Step 1: Capture URL params immediately
+  // This runs once on mount and stores payment params in sessionStorage so they survive
+  // even if auth restoration is slow, fails, or causes a re-render before completing.
   useEffect(() => {
-    if (loading) return; // Wait until auth is resolved from localStorage
-
     const params = new URLSearchParams(window.location.search);
     const paymentStatus = params.get('payment');
     const orderId = params.get('order_id');
 
-    if (!paymentStatus) return;
+    if (paymentStatus) {
+      sessionStorage.setItem('sac_pending_payment', JSON.stringify({ paymentStatus, orderId }));
+      // Clean URL immediately so it's not re-read on subsequent renders
+      window.history.replaceState({}, '', '/');
+    }
+  }, []); // mount-only — no dependency on auth state
 
-    // Clean URL without reload
-    window.history.replaceState({}, '', '/');
+  // Handle return from PayMongo GCash redirect — Step 2: Process once user is ready
+  // Separated from URL capture so that even if auth is slow, the params are preserved.
+  useEffect(() => {
+    if (loading) return; // Wait until auth is resolved from localStorage
+
+    const pendingStr = sessionStorage.getItem('sac_pending_payment');
+    if (!pendingStr) return;
+
+    const { paymentStatus, orderId } = JSON.parse(pendingStr);
+    sessionStorage.removeItem('sac_pending_payment');
 
     if (paymentStatus === 'success' && orderId) {
       // Fetch the newly created order and show receipt
