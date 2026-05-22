@@ -56,6 +56,14 @@ const MessageSchema = new mongoose.Schema({
   image: String,
   timestamp: { type: Date, default: Date.now },
   unsent: { type: Boolean, default: false },
+  replyTo: {
+    id: String,
+    senderId: String,
+    senderName: String,
+    text: String,
+    hasAudio: Boolean,
+    hasImage: Boolean,
+  },
 });
 
 const ConversationSchema = new mongoose.Schema({

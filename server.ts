@@ -646,9 +646,9 @@ async function startServer() {
     });
 
     socket.on('send_message', async (data) => {
-      const { conversationId, senderId, senderName, text, audio, image, otherUserId } = data;
+      const { conversationId, senderId, senderName, text, audio, image, replyTo, otherUserId } = data;
       const message = await container.repo.createMessage({
-        conversationId, senderId, senderName, text, audio, image,
+        conversationId, senderId, senderName, text, audio, image, replyTo,
         timestamp: new Date(),
       });
       await container.repo.updateConversationLastMessage(conversationId, text || (image ? '📷 Image' : ''));
