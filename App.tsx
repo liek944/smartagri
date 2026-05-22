@@ -717,14 +717,15 @@ export default function App() {
         onCheckout={() => { setIsCartModalOpen(false); setBuyNowProductId(null); setIsCheckoutModalOpen(true); }}
       />
       <CheckoutModal
-        isOpen={isCheckoutModalOpen} cartCount={cartCount} cartSubtotal={cartSubtotal} cartTotal={cartTotal}
+        isOpen={isCheckoutModalOpen} cart={cart} cartCount={cartCount} cartSubtotal={cartSubtotal} cartTotal={cartTotal}
         deliveryLocation={deliveryLocation} phoneNumber={phoneNumber}
         selectedPaymentMethod={selectedPaymentMethod}
         phoneError={phoneError} deliveryError={deliveryError}
         onClose={handleCheckoutClose}
         onDeliveryChange={handleDeliveryChange} onPhoneChange={handlePhoneChange}
         onPhonePaste={handlePhonePaste}
-        onPaymentMethodChange={setSelectedPaymentMethod} onConfirm={handleCheckout}
+        onPaymentMethodChange={setSelectedPaymentMethod} onUpdateQuantity={updateCartQuantity}
+        onConfirm={handleCheckout}
         isProcessing={isPaymentProcessing}
       />
       <RolePickerModal isOpen={isRolePickerOpen} onPickRole={handlePickRole} />

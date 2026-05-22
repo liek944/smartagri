@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Smartphone, Truck, Loader2 } from 'lucide-react';
+import { Smartphone, Truck, Loader2, Minus, Plus, ShoppingBag, Leaf } from 'lucide-react';
+import { CartItem } from '../../types';
 
 interface CheckoutModalProps {
   isOpen: boolean;
+  cart: CartItem[];
   cartCount: number;
   cartSubtotal: number;
   cartTotal: number;
@@ -18,15 +20,16 @@ interface CheckoutModalProps {
   onPhoneChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPhonePaste: (e: React.ClipboardEvent<HTMLInputElement>) => void;
   onPaymentMethodChange: (method: 'gcash' | 'credit' | 'cod') => void;
+  onUpdateQuantity: (id: string, delta: number) => void;
   onConfirm: () => void;
 }
 
 export default function CheckoutModal({
-  isOpen, cartCount, cartSubtotal, cartTotal,
+  isOpen, cart, cartCount, cartSubtotal, cartTotal,
   deliveryLocation, phoneNumber, selectedPaymentMethod,
   phoneError, deliveryError, isProcessing,
   onClose, onDeliveryChange, onPhoneChange, onPhonePaste,
-  onPaymentMethodChange, onConfirm,
+  onPaymentMethodChange, onUpdateQuantity, onConfirm,
 }: CheckoutModalProps) {
   return (
     <AnimatePresence>
@@ -72,6 +75,65 @@ export default function CheckoutModal({
             </div>
             <div className="overflow-y-auto flex-grow px-4 sm:px-8">
               <div className="space-y-6 pb-4">
+                {/* Per-item quantity controls */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">
+                    Order Items
+                  </label>
+                  <div className="space-y-2">
+                    {cart.map((item) => {
+                      const isFarmer = item.category === 'agriculture';
+                      const unitLabel = isFarmer ? 'kg' : 'pcs';
+                      const UnitIcon = isFarmer ? Leaf : ShoppingBag;
+                      return (
+                        <motion.div
+                          key={item.id}
+                          layout
+                          className="flex items-center gap-3 bg-gray-50 p-3 rounded-2xl"
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+                          />
+                          <div className="flex-grow min-w-0">
+                            <p className="text-sm font-black text-gray-800 truncate">{item.name}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <UnitIcon size={10} className={isFarmer ? 'text-green-500' : 'text-orange-500'} />
+                              <span className={`text-[9px] font-bold uppercase tracking-wider ${isFarmer ? 'text-green-500' : 'text-orange-500'}`}>
+                                {isFarmer ? 'Farmer' : 'Craft Producer'} · {unitLabel}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => onUpdateQuantity(item.id, -1)}
+                              className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <div className="w-14 text-center">
+                              <span className="text-sm font-black text-gray-800">{item.quantity}</span>
+                              <span className="text-[9px] font-bold text-gray-400 ml-0.5">{unitLabel}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateQuantity(item.id, 1)}
+                              className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                          <span className="text-sm font-black text-gray-700 w-16 text-right flex-shrink-0">
+                            ₱{item.price * item.quantity}
+                          </span>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Order summary */}
                 <div className="bg-gray-50 p-6 rounded-3xl space-y-3">
                   <div className="flex justify-between text-sm text-gray-500 font-bold">
