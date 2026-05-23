@@ -105,24 +105,24 @@ export default function CheckoutModal({
                               </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
                             <button
                               type="button"
                               onClick={() => onUpdateQuantity(item.id, -1)}
-                              className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                              className="w-6 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
                             >
-                              <Minus size={12} />
+                              <Minus size={10} />
                             </button>
-                            <div className="w-14 text-center">
-                              <span className="text-sm font-black text-gray-800">{item.quantity}</span>
-                              <span className="text-[9px] font-bold text-gray-400 ml-0.5">{unitLabel}</span>
+                            <div className="w-10 text-center">
+                              <span className="text-xs font-black text-gray-800">{item.quantity}</span>
+                              <span className="text-[8px] font-bold text-gray-400 ml-0.5">{unitLabel}</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => onUpdateQuantity(item.id, 1)}
-                              className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                              className="w-6 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
                             >
-                              <Plus size={12} />
+                              <Plus size={10} />
                             </button>
                           </div>
                           <span className="text-sm font-black text-gray-700 w-16 text-right flex-shrink-0">
