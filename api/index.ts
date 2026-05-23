@@ -70,10 +70,10 @@ export const api = {
   },
 
   auth: {
-    login: (email: string, password: string): Promise<User> =>
+    login: (email: string, password: string, captchaToken?: string): Promise<User> =>
       request<User>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, captchaToken }),
       }),
 
     register: (data: {
@@ -82,6 +82,7 @@ export const api = {
       password: string;
       fullName: string;
       role: string;
+      captchaToken?: string;
     }): Promise<User> =>
       request<User>('/auth/register', {
         method: 'POST',

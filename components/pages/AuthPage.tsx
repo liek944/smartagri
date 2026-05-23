@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { UserRole } from '../../types';
 import logo from '@/Logo.png';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 interface AuthPageProps {
   authMode: 'login' | 'register';
@@ -12,6 +13,30 @@ interface AuthPageProps {
 }
 
 export default function AuthPage({ authMode, authError, onSubmit, onToggleMode, onGoogleSignIn }: AuthPageProps) {
+  const [captchaValue, setCaptchaValue] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string>('');
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLocalError('');
+    if (!captchaValue) {
+      setLocalError('Please complete the Captcha to continue.');
+      return;
+    }
+    onSubmit(e);
+  };
+
+  const handleGoogleSignIn = () => {
+    setLocalError('');
+    if (!captchaValue) {
+      setLocalError('Please complete the Captcha to continue with Google.');
+      return;
+    }
+    if (onGoogleSignIn) {
+      onGoogleSignIn();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -29,7 +54,7 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode, 
 
       <div className="w-full max-w-[400px]">
         <div className="bg-white p-6 rounded-xl shadow-2xl border border-gray-100 max-h-[75vh] overflow-y-auto">
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {authMode === 'register' && (
               <>
                 <input
@@ -83,8 +108,17 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode, 
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary/20 outline-none transition-all"
             />
 
-            {authError && (
-              <p className="text-red-500 text-xs font-bold pl-1">{authError}</p>
+            <input type="hidden" name="captchaToken" value={captchaValue || ''} />
+
+            <div className="flex justify-center my-2">
+              <ReCAPTCHA
+                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6Le_8_gsAAAAALDHBwLXIYadViOB5dDwF8M0MzVj"}
+                onChange={(value) => setCaptchaValue(value)}
+              />
+            </div>
+
+            {(authError || localError) && (
+              <p className="text-red-500 text-xs font-bold pl-1">{localError || authError}</p>
             )}
 
             <button
@@ -105,7 +139,7 @@ export default function AuthPage({ authMode, authError, onSubmit, onToggleMode, 
 
             <button
               type="button"
-              onClick={onGoogleSignIn}
+              onClick={handleGoogleSignIn}
               className="w-full py-3 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-bold text-lg flex items-center justify-center gap-3 shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">

@@ -439,6 +439,7 @@ export default function App() {
     const fullName = (fd.get('fullName') as string || '').trim();
     const username = (fd.get('username') as string || '').trim();
     const role = fd.get('role') as string;
+    const captchaToken = fd.get('captchaToken') as string || '';
 
     if (authMode === 'register') {
       const err = validateAuthRegister({ fullName, username, email, password });
@@ -450,8 +451,8 @@ export default function App() {
 
     try {
       const data = authMode === 'login'
-        ? await api.auth.login(email, password)
-        : await api.auth.register({ email, username, password, fullName, role });
+        ? await api.auth.login(email, password, captchaToken)
+        : await api.auth.register({ email, username, password, fullName, role, captchaToken });
 
       if (authMode === 'register' && !data.role) {
         setCurrentUser(data); setIsRolePickerOpen(true);
