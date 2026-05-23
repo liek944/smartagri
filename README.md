@@ -1,14 +1,11 @@
-<div align="center">
-  <img width="1200" height="475" alt="SmartAgriCraft Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-  
-  # 🌾 SmartAgriCraft 🎨
-  ### *Oriental Mindoro's Digital Marketplace for Local Farmers & Artisanal Producers*
-  
-  [![Tech Stack](https://img.shields.io/badge/Stack-React%2019%20%2B%20TypeScript%20%2B%20Node.js-blue.svg)](#-technical-stack)
-  [![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas%20%2F%20JSON-green.svg)](#-database--storage-strategy)
-  [![Payment](https://img.shields.io/badge/Payment-PayMongo%20GCash%20%2F%20Card-orange.svg)](#-payment--checkout-flow)
-  [![Realtime](https://img.shields.io/badge/Realtime-Socket.io-lightgrey.svg)](#-real-time-communications)
-</div>
+# 🌾 SmartAgriCraft 🎨
+
+### _Oriental Mindoro's Digital Marketplace for Local Farmers & Artisanal Producers_
+
+[![Tech Stack](https://img.shields.io/badge/Stack-React%2019%20%2B%20TypeScript%20%2B%20Node.js-blue.svg)](#-technical-stack)
+[![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas%20%2F%20JSON-green.svg)](#-database--storage-strategy)
+[![Payment](https://img.shields.io/badge/Payment-PayMongo%20GCash%20%2F%20Card-orange.svg)](#-payment--checkout-flow)
+[![Realtime](https://img.shields.io/badge/Realtime-Socket.io-lightgrey.svg)](#-real-time-communications)
 
 ---
 
@@ -33,16 +30,16 @@ To support seamless trading, real-time chats, and immediate payments, SmartAgriC
 
 ```mermaid
 graph TD
-    subgraph Client Layer (React 19 + TypeScript + Motion)
+    subgraph "Client Layer (React 19 + TypeScript + Motion)"
         Buyer[Buyer Workspace]
         Producer[Producer / Farmer Dashboard]
         Chat[Socket.io Real-time Chat Client]
     end
-    subgraph Service Layer (Node.js + Express + Socket.io)
+    subgraph "Service Layer (Node.js + Express + Socket.io)"
         API[Express REST API]
         SIO[Socket.io WebSocket Server]
     end
-    subgraph Storage & Integration Layer
+    subgraph "Storage & Integration Layer"
         DB[(MongoDB Atlas / JSON Fallback)]
         PM[PayMongo GCash Gateway]
     end
