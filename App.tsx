@@ -32,8 +32,7 @@ import AddProductModal from './components/modals/AddProductModal';
 import EditProductModal from './components/modals/EditProductModal';
 import ProductDetailModal from './components/modals/ProductDetailModal';
 
-// Chat
-import ChatWindow from './components/ChatWindow';
+
 
 // --- Types ---
 type Section = 'home' | 'orders' | 'dashboard' | 'auth' | 'admin' | 'messages';
@@ -85,16 +84,13 @@ export default function App() {
 
   // ---- Chat ----
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
-  const activeConversationRef = useRef<Conversation | null>(null);
+  const [pendingChatConvId, setPendingChatConvId] = useState<string | null>(null);
 
   // ---- Notifications ----
   const [notifications, setNotifications] = useState<any[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
-  useEffect(() => {
-    activeConversationRef.current = activeConversation;
-  }, [activeConversation]);
+
 
   // ===========================================================================
   // Effects
@@ -223,17 +219,13 @@ export default function App() {
 
     // Listen for new messages
     socketRef.current.on('new_message_notification', (data: { conversationId: string; senderName: string; text: string }) => {
-      setNotifications((prev) => {
-        // If we're already looking at this chat, don't notify
-        if (activeConversationRef.current?.id === data.conversationId) return prev;
-        return [{
-          id: Date.now().toString(),
-          type: 'message',
-          message: `New message from ${data.senderName}: ${data.text}`,
-          read: false,
-          time: new Date().toISOString()
-        }, ...prev];
-      });
+      setNotifications((prev) => [{
+        id: Date.now().toString(),
+        type: 'message',
+        message: `New message from ${data.senderName}: ${data.text}`,
+        read: false,
+        time: new Date().toISOString()
+      }, ...prev]);
     });
 
     return () => {
@@ -530,7 +522,14 @@ export default function App() {
         productId: product.id || product._id || '',
         productName: product.name,
       });
-      setActiveConversation(conv);
+      // Ensure the conversation is in the list, then navigate to Messages
+      setConversations((prev) => {
+        const convId = conv._id || conv.id;
+        if (prev.find(c => (c._id || c.id) === convId)) return prev;
+        return [conv, ...prev];
+      });
+      setPendingChatConvId(conv._id || conv.id);
+      setActiveSection('messages');
     } catch (err) { console.error('Chat error:', err); }
   };
 
@@ -691,7 +690,10 @@ export default function App() {
                 onAddProductOpen={() => setIsAddProductFormOpen(true)}
                 onEditProductOpen={(p) => { setProductToEdit(p); setIsEditProductFormOpen(true); }}
                 onDeleteProduct={handleDeleteProduct}
-                onOpenConversation={setActiveConversation}
+                onOpenConversation={(conv) => {
+                  setPendingChatConvId(conv._id || conv.id);
+                  navigate('messages');
+                }}
               />
             )}
             {activeSection === 'auth' && (
@@ -712,6 +714,8 @@ export default function App() {
                 onConversationsChange={setConversations}
                 socketRef={socketRef}
                 products={products}
+                initialConversationId={pendingChatConvId}
+                onInitialConversationHandled={() => setPendingChatConvId(null)}
               />
             )}
           </>
@@ -770,10 +774,7 @@ export default function App() {
         />
       )}
 
-      {/* Chat */}
-      {activeConversation && currentUser && (
-        <ChatWindow conversation={activeConversation} currentUser={currentUser} onClose={() => setActiveConversation(null)} />
-      )}
+
 
       {/* Payment toast notification */}
       {paymentToast && (

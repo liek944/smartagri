@@ -104,6 +104,8 @@ interface MessagesPageProps {
   onConversationsChange: (convs: Conversation[]) => void;
   socketRef: React.MutableRefObject<Socket | null>;
   products?: Product[];
+  initialConversationId?: string | null;
+  onInitialConversationHandled?: () => void;
 }
 
 type View = 'inbox' | 'directory' | 'chat';
@@ -112,6 +114,7 @@ type View = 'inbox' | 'directory' | 'chat';
 
 export default function MessagesPage({
   currentUser, conversations, onConversationsChange, socketRef, products = [],
+  initialConversationId, onInitialConversationHandled,
 }: MessagesPageProps) {
   const [view, setView] = useState<View>('inbox');
   const [sellers, setSellers] = useState<User[]>([]);
@@ -257,6 +260,17 @@ export default function MessagesPage({
   };
 
   useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
+
+  // Open a specific conversation when navigated here from Marketplace
+  useEffect(() => {
+    if (!initialConversationId) return;
+    const conv = conversations.find(c => (c._id || c.id) === initialConversationId);
+    if (conv) {
+      setActiveConv(conv);
+      setView('chat');
+      onInitialConversationHandled?.();
+    }
+  }, [initialConversationId, conversations]);
 
   // Fetch sellers directory
   useEffect(() => {
