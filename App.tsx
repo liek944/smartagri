@@ -69,7 +69,7 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [buyNowProductId, setBuyNowProductId] = useState<string | null>(null);
+  const [buyNowProduct, setBuyNowProduct] = useState<CartItem | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'gcash' | 'credit' | 'cod'>('cod');
@@ -280,6 +280,12 @@ export default function App() {
   const cartSubtotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);
   const cartTotal = cartSubtotal + (cartSubtotal > 0 ? 50 : 0);
 
+  // Checkout items: either the single buy-now product or the full cart
+  const checkoutItems: CartItem[] = buyNowProduct ? [buyNowProduct] : cart;
+  const checkoutCount = checkoutItems.reduce((t, i) => t + i.quantity, 0);
+  const checkoutSubtotal = checkoutItems.reduce((t, i) => t + i.price * i.quantity, 0);
+  const checkoutTotal = checkoutSubtotal + (checkoutSubtotal > 0 ? 50 : 0);
+
   // ===========================================================================
   // Handlers
   // ===========================================================================
@@ -303,18 +309,20 @@ export default function App() {
   const buyNow = (product: Product) => {
     if (!currentUser) { setActiveSection('auth'); return; }
     if (currentUser.role !== 'buyer') { alert('Only buyers can purchase items.'); return; }
-    const productId = product.id || product._id || '';
-    setCart((prev) => { if (prev.find((i) => i.id === product.id)) return prev; return [...prev, { ...product, quantity: 1 }]; });
-    setBuyNowProductId(productId);
+    setBuyNowProduct({ ...product, quantity: 1 });
     setIsCheckoutModalOpen(true);
   };
 
   const handleCheckoutClose = () => {
     setIsCheckoutModalOpen(false);
-    // If this was a "buy now" flow and the user cancelled, remove the product from cart
-    if (buyNowProductId) {
-      setCart((prev) => prev.filter((i) => i.id !== buyNowProductId));
-      setBuyNowProductId(null);
+    setBuyNowProduct(null);
+  };
+
+  const handleCheckoutQuantityUpdate = (id: string, delta: number) => {
+    if (buyNowProduct && buyNowProduct.id === id) {
+      setBuyNowProduct((prev) => prev ? { ...prev, quantity: Math.max(1, prev.quantity + delta) } : prev);
+    } else {
+      updateCartQuantity(id, delta);
     }
   };
 
@@ -355,10 +363,10 @@ export default function App() {
         const { checkoutUrl } = await api.payments.createGcashSource({
           userId: currentUser.id,
           userName: currentUser.fullName,
-          items: cart.map((i) => ({ ...i, id: i.id })),
-          subtotal: cartSubtotal,
+          items: checkoutItems.map((i) => ({ ...i, id: i.id })),
+          subtotal: checkoutSubtotal,
           deliveryFee: 20,
-          total: cartTotal,
+          total: checkoutTotal,
           deliveryLocation: `${deliveryLocation}, Roxas, Or. Mindoro`,
           phoneNumber,
         });
@@ -395,13 +403,14 @@ export default function App() {
     try {
       const data = await api.orders.create({
         userId: currentUser.id, userName: currentUser.fullName,
-        items: cart.map((i) => ({ ...i, id: i.id })),
-        subtotal: cartSubtotal, deliveryFee: 50, total: cartTotal,
+        items: checkoutItems.map((i) => ({ ...i, id: i.id })),
+        subtotal: checkoutSubtotal, deliveryFee: 50, total: checkoutTotal,
         paymentMethod: selectedPaymentMethod, status: 'pending',
         deliveryLocation: `${deliveryLocation}, Roxas, Or. Mindoro`,
         phoneNumber, orderDate: new Date().toISOString(),
       } as any);
-      setCart([]); setIsCheckoutModalOpen(false); setBuyNowProductId(null);
+      if (!buyNowProduct) setCart([]); // Only clear cart if checking out from cart
+      setBuyNowProduct(null); setIsCheckoutModalOpen(false);
       setLastOrder(data); setIsReceiptOpen(true);
       fetchProducts();
 
@@ -714,17 +723,17 @@ export default function App() {
         isOpen={isCartModalOpen} cart={cart} cartSubtotal={cartSubtotal} cartTotal={cartTotal}
         onClose={() => setIsCartModalOpen(false)} onRemove={removeFromCart}
         onUpdateQuantity={updateCartQuantity}
-        onCheckout={() => { setIsCartModalOpen(false); setBuyNowProductId(null); setIsCheckoutModalOpen(true); }}
+        onCheckout={() => { setIsCartModalOpen(false); setBuyNowProduct(null); setIsCheckoutModalOpen(true); }}
       />
       <CheckoutModal
-        isOpen={isCheckoutModalOpen} cart={cart} cartCount={cartCount} cartSubtotal={cartSubtotal} cartTotal={cartTotal}
+        isOpen={isCheckoutModalOpen} cart={checkoutItems} cartCount={checkoutCount} cartSubtotal={checkoutSubtotal} cartTotal={checkoutTotal}
         deliveryLocation={deliveryLocation} phoneNumber={phoneNumber}
         selectedPaymentMethod={selectedPaymentMethod}
         phoneError={phoneError} deliveryError={deliveryError}
         onClose={handleCheckoutClose}
         onDeliveryChange={handleDeliveryChange} onPhoneChange={handlePhoneChange}
         onPhonePaste={handlePhonePaste}
-        onPaymentMethodChange={setSelectedPaymentMethod} onUpdateQuantity={updateCartQuantity}
+        onPaymentMethodChange={setSelectedPaymentMethod} onUpdateQuantity={handleCheckoutQuantityUpdate}
         onConfirm={handleCheckout}
         isProcessing={isPaymentProcessing}
       />
