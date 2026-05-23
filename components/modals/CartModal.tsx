@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Trash2, ShoppingCart } from 'lucide-react';
+import { X, Trash2, Minus, Plus, Leaf, ShoppingBag } from 'lucide-react';
 import { CartItem } from '../../types';
 
 interface CartModalProps {
@@ -46,33 +46,50 @@ export default function CartModal({
               {cart.length === 0 ? (
                 <div className="text-center py-12 text-gray-400 italic">Your cart is empty</div>
               ) : (
-                cart.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                    <img src={item.image} alt={item.name} className="w-20 h-20 rounded-xl object-cover" />
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-gray-800">{item.name}</h4>
-                      <p className="text-sm text-primary font-black">₱{item.price}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <button
-                          onClick={() => onUpdateQuantity(item.id, -1)}
-                          className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"
-                        >
-                          -
+                cart.map((item) => {
+                  const isFarmer = item.category === 'agriculture';
+                  const unitLabel = isFarmer ? 'kg' : 'pcs';
+                  const UnitIcon = isFarmer ? Leaf : ShoppingBag;
+                  return (
+                    <div key={item.id} className="flex gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <img src={item.image} alt={item.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                      <div className="flex-grow min-w-0">
+                        <h4 className="font-bold text-gray-800 truncate">{item.name}</h4>
+                        <div className="flex items-center gap-1 mt-0.5 mb-2">
+                          <UnitIcon size={10} className={isFarmer ? 'text-green-500' : 'text-orange-500'} />
+                          <span className={`text-[9px] font-bold uppercase tracking-wider ${isFarmer ? 'text-green-500' : 'text-orange-500'}`}>
+                            {isFarmer ? 'Farmer' : 'Craft Producer'} · {unitLabel}
+                          </span>
+                        </div>
+                        <p className="text-sm text-primary font-black">₱{item.price}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button
+                            onClick={() => onUpdateQuantity(item.id, -1)}
+                            className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <div className="w-14 text-center">
+                            <span className="text-sm font-black text-gray-800">{item.quantity}</span>
+                            <span className="text-[9px] font-bold text-gray-400 ml-0.5">{unitLabel}</span>
+                          </div>
+                          <button
+                            onClick={() => onUpdateQuantity(item.id, 1)}
+                            className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 active:scale-90 transition-all"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end justify-between flex-shrink-0">
+                        <button onClick={() => onRemove(item.id)} className="text-red-400 hover:text-red-500 p-1">
+                          <Trash2 size={18} />
                         </button>
-                        <span className="font-bold w-4 text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => onUpdateQuantity(item.id, 1)}
-                          className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100"
-                        >
-                          +
-                        </button>
+                        <span className="text-sm font-black text-gray-700">₱{item.price * item.quantity}</span>
                       </div>
                     </div>
-                    <button onClick={() => onRemove(item.id)} className="text-red-400 hover:text-red-500 p-2">
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
