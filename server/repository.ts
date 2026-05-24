@@ -55,6 +55,7 @@ export interface Repository {
 
   // User directory
   listSellers(): Promise<any[]>;
+  listBuyers(): Promise<any[]>;
 
   // Lifecycle
   initialize(): Promise<void>;
@@ -236,6 +237,10 @@ export class MongoRepository implements Repository {
 
   async listSellers(): Promise<any[]> {
     return User.find({ role: { $in: ['farmer', 'artisan'] } }).select('-password');
+  }
+
+  async listBuyers(): Promise<any[]> {
+    return User.find({ role: 'buyer' }).select('-password');
   }
 }
 
@@ -525,6 +530,15 @@ export class JsonFileRepository implements Repository {
   async listSellers(): Promise<any[]> {
     return this.db.users
       .filter((u) => u.role === 'farmer' || u.role === 'artisan')
+      .map((u) => {
+        const { password, ...rest } = u;
+        return rest;
+      });
+  }
+
+  async listBuyers(): Promise<any[]> {
+    return this.db.users
+      .filter((u) => u.role === 'buyer')
       .map((u) => {
         const { password, ...rest } = u;
         return rest;

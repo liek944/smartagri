@@ -411,6 +411,15 @@ async function startServer() {
     }
   });
 
+  // --- Buyers directory ---
+  app.get('/api/buyers', async (_req, res) => {
+    try {
+      res.json(await container.repo.listBuyers());
+    } catch {
+      res.status(500).json({ error: 'Failed to fetch buyers' });
+    }
+  });
+
   // --- PayMongo GCash Payment routes ---
   const PAYMONGO_API = 'https://api.paymongo.com/v1';
   const PAYMONGO_AUTH = `Basic ${Buffer.from((process.env.PAYMONGO_SECRET_KEY || '') + ':').toString('base64')}`;

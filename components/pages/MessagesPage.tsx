@@ -118,6 +118,7 @@ export default function MessagesPage({
 }: MessagesPageProps) {
   const [view, setView] = useState<View>('inbox');
   const [sellers, setSellers] = useState<User[]>([]);
+  const [buyers, setBuyers] = useState<User[]>([]);
   const [sellerSearch, setSellerSearch] = useState('');
   const [inboxSearch, setInboxSearch] = useState('');
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
@@ -272,14 +273,23 @@ export default function MessagesPage({
     }
   }, [initialConversationId, conversations]);
 
-  // Fetch sellers directory
+  // Fetch directory (sellers for buyers, buyers for sellers)
   useEffect(() => {
-    if (view === 'directory' && sellers.length === 0) {
-      setLoadingSellers(true);
-      api.sellers.list()
-        .then(setSellers)
-        .catch(() => {})
-        .finally(() => setLoadingSellers(false));
+    if (view === 'directory') {
+      const isSeller = currentUser.role === 'farmer' || currentUser.role === 'artisan';
+      if (isSeller && buyers.length === 0) {
+        setLoadingSellers(true);
+        api.buyers.list()
+          .then(setBuyers)
+          .catch(() => {})
+          .finally(() => setLoadingSellers(false));
+      } else if (!isSeller && sellers.length === 0) {
+        setLoadingSellers(true);
+        api.sellers.list()
+          .then(setSellers)
+          .catch(() => {})
+          .finally(() => setLoadingSellers(false));
+      }
     }
   }, [view]);
 
@@ -334,7 +344,7 @@ export default function MessagesPage({
     // Feature: listen for unsend events
     chatSocketRef.current.on('message_unsent', ({ messageId }: { messageId: string }) => {
       setMessages(prev => prev.map(m => {
-        const mid = m.id || m._id;
+        const mid = m.id || (m as any)._id;
         if (mid === messageId) {
           return { ...m, unsent: true, text: '', audio: undefined, image: undefined };
         }
@@ -473,12 +483,23 @@ export default function MessagesPage({
   const formatDuration = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   // Filtered lists
+  const isSeller = currentUser.role === 'farmer' || currentUser.role === 'artisan';
+  const directoryUsers = isSeller ? buyers : sellers;
+  const directoryLabel = isSeller ? 'Browse Buyers' : 'Browse Sellers';
+  const directoryEmptyLabel = isSeller ? 'No buyers found' : 'No sellers found';
+  const directoryEmptySubLabel = isSeller
+    ? 'No registered buyers yet'
+    : 'Start messaging farmers and craft producers';
+  const directorySearchPlaceholder = isSeller
+    ? 'Search buyers...'
+    : 'Search farmers and craft producers...';
+
   const filteredSellers = useMemo(() => {
     const q = sellerSearch.toLowerCase();
-    return sellers
+    return directoryUsers
       .filter(s => s.id !== currentUser.id)
       .filter(s => !q || s.fullName.toLowerCase().includes(q) || (s.role || '').toLowerCase().includes(q));
-  }, [sellers, sellerSearch, currentUser.id]);
+  }, [directoryUsers, sellerSearch, currentUser.id]);
 
   const filteredConversations = useMemo(() => {
     const q = inboxSearch.toLowerCase();
@@ -533,7 +554,7 @@ export default function MessagesPage({
                 : 'bg-white text-primary border border-primary/20 hover:bg-primary/5'
             }`}
           >
-            {view === 'directory' ? <><MessageSquare size={16} /> Inbox</> : <><Users size={16} /> Browse Sellers</>}
+            {view === 'directory' ? <><MessageSquare size={16} /> Inbox</> : <><Users size={16} /> {directoryLabel}</>}
           </button>
         )}
       </div>
@@ -560,12 +581,12 @@ export default function MessagesPage({
                   <MessageSquare size={32} className="text-primary/30" />
                 </div>
                 <p className="font-bold text-gray-400 mb-2">No conversations yet</p>
-                <p className="text-sm text-gray-400 mb-6">Start messaging farmers and craft producers</p>
+                <p className="text-sm text-gray-400 mb-6">{directoryEmptySubLabel}</p>
                 <button
                   onClick={() => setView('directory')}
                   className="bg-primary text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                 >
-                  Browse Sellers
+                  Browse {isSeller ? 'Buyers' : 'Sellers'}
                 </button>
               </div>
             ) : (
@@ -608,20 +629,20 @@ export default function MessagesPage({
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text" value={sellerSearch} onChange={e => setSellerSearch(e.target.value)}
-                placeholder="Search farmers and craft producers..."
+                placeholder={directorySearchPlaceholder}
                 className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
           </div>
           <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
             {loadingSellers ? (
-              <div className="text-center py-16 text-gray-400 font-bold">Loading sellers...</div>
+              <div className="text-center py-16 text-gray-400 font-bold">Loading {isSeller ? 'buyers' : 'sellers'}...</div>
             ) : filteredSellers.length === 0 ? (
               <div className="text-center py-16 px-6">
                 <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Users size={32} className="text-primary/30" />
                 </div>
-                <p className="font-bold text-gray-400">No sellers found</p>
+                <p className="font-bold text-gray-400">{directoryEmptyLabel}</p>
                 <p className="text-sm text-gray-400 mt-1">Try a different search term</p>
               </div>
             ) : (
@@ -641,9 +662,11 @@ export default function MessagesPage({
                       title="View Profile"
                     >
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-lg shrink-0 transition-transform group-hover/avatar:scale-105 shadow-sm ${
-                        seller.role === 'farmer'
-                          ? 'bg-gradient-to-br from-green-100 to-green-50 text-green-700'
-                          : 'bg-gradient-to-br from-purple-100 to-purple-50 text-purple-700'
+                        isSeller
+                          ? 'bg-gradient-to-br from-blue-100 to-blue-50 text-blue-700'
+                          : seller.role === 'farmer'
+                            ? 'bg-gradient-to-br from-green-100 to-green-50 text-green-700'
+                            : 'bg-gradient-to-br from-purple-100 to-purple-50 text-purple-700'
                       }`}>
                         {seller.fullName[0]}
                       </div>
@@ -652,9 +675,11 @@ export default function MessagesPage({
                           {seller.fullName}
                         </span>
                         <span className={`text-[10px] font-black uppercase tracking-widest block ${
-                          seller.role === 'farmer' ? 'text-green-600' : 'text-purple-600'
-                        }`}>
-                          {seller.role === 'artisan' ? 'Craft Producer' : 'Farmer'}
+                              isSeller
+                                ? 'text-blue-600'
+                                : seller.role === 'farmer' ? 'text-green-600' : 'text-purple-600'
+                            }`}>
+                          {isSeller ? 'Buyer' : seller.role === 'artisan' ? 'Craft Producer' : 'Farmer'}
                         </span>
                       </div>
                     </button>
@@ -963,7 +988,7 @@ export default function MessagesPage({
                 <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Send Image">
                   <ImageIcon size={20} />
                 </button>
-                <button type="button" onClick={startCamera} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Take Photo">
+                <button type="button" onClick={() => startCamera()} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Take Photo">
                   <Camera size={20} />
                 </button>
                 <button type="button" onClick={startRecording} className="p-2 rounded-full transition-colors text-primary hover:bg-primary/10" title="Record Voice Message">

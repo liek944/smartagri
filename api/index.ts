@@ -171,6 +171,11 @@ export const api = {
       request<User[]>('/sellers'),
   },
 
+  buyers: {
+    list: (): Promise<User[]> =>
+      request<User[]>('/buyers'),
+  },
+
   reviews: {
     list: (productId: string): Promise<Review[]> =>
       request<any[]>(`/reviews/${productId}`).then(normalizeIds),
