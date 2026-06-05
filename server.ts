@@ -85,28 +85,11 @@ async function startServer() {
     }
   });
 
-  // --- Captcha Helper ---
-  async function verifyCaptcha(token: string) {
-    if (!token) return false;
-    const secret = process.env.RECAPTCHA_SECRET_KEY;
-    if (!secret) return true; // Bypass if no secret configured
-    try {
-      const res = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`, { method: 'POST' });
-      const data = await res.json();
-      return data.success;
-    } catch (err) {
-      return false;
-    }
-  }
 
   // --- Auth routes ---
   app.post('/api/auth/register', async (req, res) => {
     try {
-      const { email, username, password, fullName, role, captchaToken } = req.body;
-
-      if (!(await verifyCaptcha(captchaToken))) {
-        return res.status(400).json({ error: 'Captcha verification failed. Please try again.' });
-      }
+      const { email, username, password, fullName, role } = req.body;
 
       if (await container.repo.findUserByEmailOrUsername(email)) {
         return res.status(400).json({ error: 'Email already registered' });
@@ -138,12 +121,8 @@ async function startServer() {
 
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { email, password, captchaToken } = req.body;
+      const { email, password } = req.body;
       console.log('Login attempt:', email);
-
-      if (!(await verifyCaptcha(captchaToken))) {
-        return res.status(400).json({ error: 'Captcha verification failed. Please try again.' });
-      }
 
       const user = await container.repo.findUserByEmailOrUsername(email);
       if (!user) {
